@@ -263,11 +263,34 @@ After the backend has completed startup, you may confirm migrations in Supabase:
 
 The seed is idempotent. It creates the super-admin on the first deployment if the email does not exist. For an existing email, the seed deliberately does not overwrite the stored password. Changing `SEED_ADMIN_PASSWORD` in Render after the account already exists will **not** reset that account's password. Use the application's approved password reset/admin recovery procedure instead.
 
+## Recover a failed Prisma migration (P3009)
+
+The first deployment of the admissions/staff migration (`20261003173000_admissions_staff_workflow`) could fail because its original SQL referenced `Trainer.createdAt`, a column that does not exist in this database. The corrected migration in the latest `main` branch removes that reference and is safe to rerun if the earlier attempt applied some DDL before failing. Prisma nevertheless blocks future deploys while Supabase records the old attempt as failed.
+
+After confirming the corrected commit is present in the backend service's deployed source, clear the failed attempt as rolled back, then apply the corrected migration. This does not delete application rows or reverse schema changes; `--rolled-back` only updates Prisma's migration bookkeeping so the corrected, idempotent SQL can run again.
+
+1. Confirm the backend's Render `DATABASE_URL` is the correct, current Supabase **Session pooler** URI. If the database password was ever shared, rotate it in Supabase first and update the Render secret. Never paste the URI into chat.
+2. On a trusted computer with the current repository checked out, configure the private `DATABASE_URL` in `open-institute-updated/backend/.env` (this file is git-ignored). Use the same current URI as Render. Do not place it in a command argument or commit it.
+3. Confirm the corrected migration file is present at `open-institute-updated/backend/prisma/migrations/20261003173000_admissions_staff_workflow/migration.sql`. It must not contain `Trainer.createdAt`.
+4. From `open-institute-updated/backend`, run:
+
+   ```sh
+   npx prisma migrate resolve --rolled-back 20261003173000_admissions_staff_workflow
+   npx prisma migrate deploy
+   npx prisma migrate status
+   ```
+
+5. Continue only if `migrate deploy` succeeds and `migrate status` reports no failed or pending migrations. Then redeploy/restart the backend service on Render; startup should now get past Prisma, finish the seed, and start the API.
+6. Check Render backend logs and `https://<frontend-hostname>/api/ready`.
+
+**Do not use `--applied`** for this recovery: the corrected migration has not been confirmed applied. Do not run `prisma db push`, drop tables, delete rows from `_prisma_migrations`, or manually rerun ad hoc DDL. If `migrate deploy` reports a new SQL error, stop and inspect that exact error before attempting another resolve; do not repeatedly mark attempts rolled back.
+
 ## Troubleshooting
 
 | Symptom | Check |
 |---|---|
 | Backend deploy fails with Prisma `P1001` or cannot reach database | Re-copy the Supabase **Session pooler** URI; verify host, port, username, encoded password, and that network restrictions are not blocking Render. |
+| Backend deploy fails with Prisma `P3009` for `20261003173000_admissions_staff_workflow` | The prior failed migration record must be resolved before Prisma can retry. Follow **Recover a failed Prisma migration (P3009)** above using the corrected migration and the same private Supabase connection. |
 | Backend fails environment validation | Ensure `NODE_ENV=production`, a valid `DATABASE_URL`, `FRONTEND_ORIGIN` with `https://`, and a random `JWT_SECRET` at least 32 characters long. |
 | Prisma migration fails | Read the complete backend deploy log. Do not manually create tables in SQL Editor. Verify the database is new/managed by this Prisma migration history and that the database user can create/alter objects. |
 | Backend is running but frontend `/api` returns 502 | For public backend, set frontend `API_UPSTREAM` to the backend's public hostname and `API_UPSTREAM_SCHEME=https`. For private backend, use its private `host:port` and `API_UPSTREAM_SCHEME=http`. |
