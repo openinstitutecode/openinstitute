@@ -11,7 +11,14 @@ import { attemptDeadline, isPastDeadline, scoreQuiz, seededShuffle, validateMcq 
 import { classifyUpload, magicMatches, maxBytesFor, sanitizeFilename } from "../src/lib/media-policy.js";
 import { signMediaToken, verifyMediaToken } from "../src/lib/signed-url.js";
 import { isStaleLive, joinOpensAt, sessionDay } from "../src/lib/live-class-utils.js";
-import { streamToDisk, resolveStoragePath, UploadTooLargeError } from "../src/lib/media-storage.js";
+import {
+  readAdmissionUpload,
+  removeAdmissionUpload,
+  resolveStoragePath,
+  storeAdmissionUpload,
+  streamToDisk,
+  UploadTooLargeError,
+} from "../src/lib/media-storage.js";
 import { blocksSchema, blocksToMarkdown, checkBlockRefs, collectMediaIds, estimateMinutes, isHttpUrl, type LessonBlock } from "../src/lib/lesson-blocks.js";
 
 const mcq = (id: string, marks: number, correct: string) => ({ id, type: "mcq", marks, correctAnswer: correct });
@@ -113,6 +120,60 @@ test("streamToDisk stores, hashes, and enforces the size cap", async () => {
   await assert.rejects(streamToDisk(Readable.from([Buffer.alloc(2000)]), key2, 1000), UploadTooLargeError);
   await assert.rejects(fs.stat(resolveStoragePath(key2)!)); // partial file was removed
   assert.equal(resolveStoragePath("../../etc/passwd"), null);
+});
+
+test("admission files move from temporary disk to private Supabase Storage", async () => {
+  const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "admission-storage-"));
+  const previous = {
+    uploadDir: process.env.UPLOAD_DIR,
+    url: process.env.SUPABASE_URL,
+    key: process.env.SUPABASE_SERVICE_ROLE_KEY,
+    bucket: process.env.SUPABASE_STORAGE_BUCKET,
+    fetch: globalThis.fetch,
+  };
+  const source = Buffer.from("%PDF-1.7 private admission file");
+  const requests: Array<{ url: string; method: string; authorization: string | null }> = [];
+  process.env.UPLOAD_DIR = tempDir;
+  process.env.SUPABASE_URL = "https://example.supabase.co";
+  process.env.SUPABASE_SERVICE_ROLE_KEY = "server-only-test-key";
+  process.env.SUPABASE_STORAGE_BUCKET = "admission-documents";
+  globalThis.fetch = async (input, init) => {
+    requests.push({
+      url: String(input),
+      method: init?.method ?? "GET",
+      authorization: new Headers(init?.headers).get("Authorization"),
+    });
+    if (init?.method === "POST") return new Response("{}", { status: 200 });
+    if (init?.method === "DELETE") return new Response(null, { status: 200 });
+    return new Response(source, { status: 200 });
+  };
+
+  try {
+    const localKey = `${"c".repeat(32)}.pdf`;
+    await streamToDisk(Readable.from([source]), localKey, 1024);
+    const storedKey = await storeAdmissionUpload(localKey, "application/pdf");
+    assert.equal(storedKey, `sb_${localKey}`);
+    assert.equal(resolveStoragePath(storedKey), null);
+    await assert.rejects(fs.stat(path.join(tempDir, localKey)));
+    assert.deepEqual(await readAdmissionUpload(storedKey), source);
+    await removeAdmissionUpload(storedKey);
+    assert.equal(requests.length, 3);
+    assert.ok(requests.every((request) => request.url.includes("/storage/v1/object/")));
+    assert.ok(requests.every((request) => request.url.includes("admission-documents/admissions/")));
+    assert.ok(requests.some((request) => request.url.includes("/object/authenticated/")));
+    assert.ok(requests.every((request) => request.authorization === "Bearer server-only-test-key"));
+  } finally {
+    globalThis.fetch = previous.fetch;
+    if (previous.uploadDir === undefined) delete process.env.UPLOAD_DIR;
+    else process.env.UPLOAD_DIR = previous.uploadDir;
+    if (previous.url === undefined) delete process.env.SUPABASE_URL;
+    else process.env.SUPABASE_URL = previous.url;
+    if (previous.key === undefined) delete process.env.SUPABASE_SERVICE_ROLE_KEY;
+    else process.env.SUPABASE_SERVICE_ROLE_KEY = previous.key;
+    if (previous.bucket === undefined) delete process.env.SUPABASE_STORAGE_BUCKET;
+    else process.env.SUPABASE_STORAGE_BUCKET = previous.bucket;
+    await fs.rm(tempDir, { recursive: true, force: true });
+  }
 });
 
 test("lesson blocks: validation, markdown, media ids, minutes", () => {

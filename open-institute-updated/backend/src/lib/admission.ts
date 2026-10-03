@@ -1,7 +1,6 @@
 import { randomBytes } from "node:crypto";
-import { readFile } from "node:fs/promises";
 import type { Prisma } from "@prisma/client";
-import { resolveStoragePath } from "./media-storage.js";
+import { readAdmissionUpload } from "./media-storage.js";
 
 const REQUIRED_ADMISSION_DOCUMENTS = ["id_document", "certificate", "portrait_photo"];
 
@@ -63,8 +62,10 @@ export async function admitApplication(tx: Prisma.TransactionClient, application
     },
   });
   const photoDocument = application.documents.find((document) => document.category === "portrait_photo");
-  const photoPath = photoDocument?.storageKey ? resolveStoragePath(photoDocument.storageKey) : null;
-  const photoBytes = photoPath ? await readFile(photoPath) : null;
+  const photoBytes = photoDocument?.storageKey
+    ? await readAdmissionUpload(photoDocument.storageKey)
+    : null;
+  if (photoDocument?.storageKey && !photoBytes) throw new Error("ADMISSION_PORTRAIT_FILE_MISSING");
   const photoDataUrl = photoBytes && photoDocument?.mimeType
     ? `data:${photoDocument.mimeType};base64,${photoBytes.toString("base64")}`
     : photoDocument?.fileUrl;

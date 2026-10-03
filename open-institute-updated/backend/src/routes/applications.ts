@@ -9,7 +9,15 @@ import { prisma } from "../lib/prisma.js";
 import { requireAuth, requireRole, AuthedRequest } from "../middleware/auth.js";
 import { validatePassword, bcryptRounds } from "../lib/password-policy.js";
 import { admissionMagicMatches, classifyAdmissionUpload, maxAdmissionUploadBytes } from "../lib/admission-files.js";
-import { removeFromDisk, resolveStoragePath, streamToDisk, UploadTooLargeError } from "../lib/media-storage.js";
+import {
+  readAdmissionUpload,
+  removeAdmissionUpload,
+  removeFromDisk,
+  storeAdmissionUpload,
+  streamToDisk,
+  SupabaseStorageError,
+  UploadTooLargeError,
+} from "../lib/media-storage.js";
 import { admitApplication } from "../lib/admission.js";
 
 export const applicationsRouter = Router();
@@ -83,7 +91,16 @@ applicationsRouter.get(
         createdAt: true,
         programme: { select: { name: true } },
         documents: {
-          select: { id: true, category: true, fileUrl: true, verified: true, verifiedAt: true, uploadedAt: true },
+          select: {
+            id: true,
+            category: true,
+            fileUrl: true,
+            mimeType: true,
+            originalName: true,
+            verified: true,
+            verifiedAt: true,
+            uploadedAt: true,
+          },
           orderBy: { uploadedAt: "asc" },
         },
       },
@@ -159,19 +176,21 @@ applicationsRouter.post("/:refNumber/files", async (req, res) => {
       return res.status(400).json({ message: "X-File-Name must be URI-encoded." });
     }
     const storageKey = `${randomBytes(16).toString("hex")}${cls.ext}`;
+    let persistedStorageKey = storageKey;
     try {
       const stored = await streamToDisk(req as unknown as Readable, storageKey, limit);
       if (!stored.bytes || !admissionMagicMatches(cls.mime, name, stored.head)) {
         await removeFromDisk(storageKey);
         return res.status(415).json({ message: "The file is empty or its contents don't match the declared type." });
       }
+      persistedStorageKey = await storeAdmissionUpload(storageKey, cls.mime);
       const uploaded = await prisma.$transaction(async (tx) => {
         const document = await tx.document.create({
           data: {
             applicationId: application.id,
             category: category.data,
             fileUrl: "",
-            storageKey,
+            storageKey: persistedStorageKey,
             mimeType: cls.mime,
             originalName: name,
           },
@@ -185,8 +204,13 @@ applicationsRouter.post("/:refNumber/files", async (req, res) => {
       });
       return res.status(201).json({ ...uploaded, verified: false });
     } catch (err) {
-      await removeFromDisk(storageKey);
+      await removeAdmissionUpload(persistedStorageKey).catch((cleanupError: unknown) => {
+        console.error("Failed to clean up an admission upload after an error.", cleanupError);
+      });
       if (err instanceof UploadTooLargeError) return res.status(413).json({ message: "The file exceeds the allowed upload size." });
+      if (err instanceof SupabaseStorageError) {
+        return res.status(503).json({ message: "Secure document storage is unavailable. Please try again later." });
+      }
       return res.status(500).json({ message: "The upload failed. Please try again." });
     }
 });
@@ -201,14 +225,13 @@ applicationsRouter.get("/files/:documentId", requireAuth, async (req: AuthedRequ
     if (!allowedRole && student?.applicationId !== document.applicationId) {
       return res.status(403).json({ message: "You don't have access to this file." });
     }
-    const abs = resolveStoragePath(document.storageKey);
-    if (!abs) return res.status(404).json({ message: "File not found." });
+    const bytes = await readAdmissionUpload(document.storageKey);
+    if (!bytes) return res.status(404).json({ message: "File not found." });
     res.setHeader("Content-Type", document.mimeType);
     res.setHeader("Content-Disposition", `inline; filename="${(document.originalName ?? "document").replace(/["\\\r\n]/g, "_")}"`);
     res.setHeader("X-Content-Type-Options", "nosniff");
-    res.sendFile(abs, (err) => {
-      if (err && !res.headersSent) res.status(404).json({ message: "File not found." });
-    });
+    res.setHeader("Cache-Control", "private, no-store");
+    res.send(bytes);
 });
 
 // RG002 — admissions staff actually verifying a submitted document

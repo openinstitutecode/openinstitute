@@ -205,12 +205,84 @@ export default function Admissions() {
   );
 }
 
+type AdmissionDocumentCategory = "id_document" | "certificate" | "portrait_photo";
+
+const admissionDocuments: Array<{
+  category: AdmissionDocumentCategory;
+  title: string;
+  description: string;
+  accept: string;
+  sizeLimit: string;
+  buttonLabel: string;
+}> = [
+  {
+    category: "id_document",
+    title: "National ID",
+    description: "Upload the front of your national ID as a PNG or PDF.",
+    accept: "image/png,application/pdf",
+    sizeLimit: "10 MB",
+    buttonLabel: "Upload National ID",
+  },
+  {
+    category: "certificate",
+    title: "KCSE certificate",
+    description: "Upload your KCSE certificate or equivalent qualification as a PNG or PDF.",
+    accept: "image/png,application/pdf",
+    sizeLimit: "10 MB",
+    buttonLabel: "Upload KCSE certificate",
+  },
+  {
+    category: "portrait_photo",
+    title: "Passport photo",
+    description: "Upload a clear PNG or JPEG portrait. It will appear on your digital student ID.",
+    accept: "image/png,image/jpeg",
+    sizeLimit: "5 MB",
+    buttonLabel: "Upload passport photo",
+  },
+];
+
 function DocumentUpload({ refNumber, email }: { refNumber: string; email: string }) {
+  const [uploaded, setUploaded] = useState<Partial<Record<AdmissionDocumentCategory, string>>>({});
+
+  return (
+    <section className="mt-10 w-full max-w-3xl border-t border-line pt-8">
+      <h2 className="font-display text-xl">Submit your documents</h2>
+      <p className="mt-2 text-sm text-ink/60">
+        Each item has its own upload button. Files are sent to private storage and linked to your application.
+        You may also submit an existing document link instead.
+      </p>
+      <div className="mt-5 grid gap-4 md:grid-cols-3">
+        {admissionDocuments.map((document) => (
+          <AdmissionDocumentUpload
+            key={document.category}
+            document={document}
+            refNumber={refNumber}
+            email={email}
+            uploadedName={uploaded[document.category]}
+            onUploaded={(name) => setUploaded((current) => ({ ...current, [document.category]: name }))}
+          />
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function AdmissionDocumentUpload({
+  document,
+  refNumber,
+  email,
+  uploadedName,
+  onUploaded,
+}: {
+  document: (typeof admissionDocuments)[number];
+  refNumber: string;
+  email: string;
+  uploadedName?: string;
+  onUploaded: (name: string) => void;
+}) {
   const fileInput = useRef<HTMLInputElement>(null);
-  const [category, setCategory] = useState<"id_document" | "certificate" | "portrait_photo">("id_document");
   const [file, setFile] = useState<File | null>(null);
   const [fileUrl, setFileUrl] = useState("");
-  const [uploaded, setUploaded] = useState<{ category: string }[]>([]);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
 
@@ -219,8 +291,8 @@ function DocumentUpload({ refNumber, email }: { refNumber: string; email: string
     setUploadError(null);
     setUploading(true);
     try {
-      const res = file
-        ? await fetch(`/api/applications/${refNumber}/files?email=${encodeURIComponent(email)}&category=${category}`, {
+      const response = file
+        ? await fetch(`/api/applications/${refNumber}/files?email=${encodeURIComponent(email)}&category=${document.category}`, {
             method: "POST",
             headers: { "Content-Type": file.type, "X-File-Name": encodeURIComponent(file.name) },
             body: file,
@@ -228,14 +300,14 @@ function DocumentUpload({ refNumber, email }: { refNumber: string; email: string
         : await fetch(`/api/applications/${refNumber}/documents`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ email, category, fileUrl }),
+            body: JSON.stringify({ email, category: document.category, fileUrl }),
           });
-      if (!res.ok) {
-        const body = await res.json().catch(() => ({}));
-        throw new Error(body.message ?? "Could not submit that document.");
+      if (!response.ok) {
+        const body = await response.json().catch(() => ({}));
+        throw new Error(body.message ?? `Could not submit the ${document.title.toLowerCase()}.`);
       }
-      const data = await res.json();
-      setUploaded((docs) => [...docs, { category: data.category }]);
+      const result = await response.json();
+      onUploaded(file?.name ?? result.fileUrl);
       setFileUrl("");
       setFile(null);
       if (fileInput.current) fileInput.current.value = "";
@@ -247,51 +319,42 @@ function DocumentUpload({ refNumber, email }: { refNumber: string; email: string
   }
 
   return (
-    <form onSubmit={handleUpload} className="mt-10 max-w-xl space-y-4 border-t border-line pt-8">
-      <p className="font-display text-lg">Submit your documents</p>
-      <p className="text-sm text-ink/60">
-        Upload a national ID, your KCSE certificate (or equivalent), and a passport photo for your digital student ID. PNG and PDF documents are accepted; portrait photos must be PNG or JPEG.
-      </p>
-      <Field label="Document type" required>
-        <select value={category} onChange={(e) => { setCategory(e.target.value as "id_document" | "certificate" | "portrait_photo"); setFile(null); }} className="input">
-          <option value="id_document">National ID</option>
-          <option value="certificate">KCSE certificate / prior qualification</option>
-          <option value="portrait_photo">Passport photo (required for digital ID)</option>
-        </select>
-      </Field>
-      <Field label={category === "portrait_photo" ? "Choose a passport photo" : "Choose a PNG or PDF document"}>
+    <form onSubmit={handleUpload} className="flex flex-col gap-3 border border-line p-4">
+      <div>
+        <h3 className="font-medium text-navy">{document.title}</h3>
+        <p className="mt-1 text-xs text-ink/60">{document.description}</p>
+      </div>
+      <Field label="Choose a file">
         <input
           ref={fileInput}
           type="file"
-          required={!file && !fileUrl}
-          accept={category === "portrait_photo" ? "image/png,image/jpeg" : "image/png,application/pdf"}
+          required={!fileUrl}
+          accept={document.accept}
           onChange={(e) => setFile(e.target.files?.[0] ?? null)}
-          className="input"
+          className="input text-xs"
         />
-        <span className="mt-1 block text-xs text-ink/50">Maximum file size: {category === "portrait_photo" ? "5 MB" : "10 MB"}.</span>
+        <span className="mt-1 block text-xs text-ink/50">Maximum {document.sizeLimit}.</span>
       </Field>
-      <p className="text-xs text-ink/50">Or, if your document is already hosted, provide a document link instead:</p>
-      <Field label="Existing document link">
+      <Field label="Or paste an existing link">
         <input
           type="url"
           value={fileUrl}
           onChange={(e) => setFileUrl(e.target.value)}
           required={!file}
-          className="input"
-          placeholder="https://drive.google.com/..."
+          className="input text-sm"
+          placeholder="https://..."
         />
       </Field>
-      {uploadError && <p className="text-sm text-navy-dark">{uploadError}</p>}
-      <button type="submit" disabled={uploading} className="btn-primary disabled:opacity-60">
-        {uploading ? "Submitting…" : "Submit document"}
-      </button>
-      {uploaded.length > 0 && (
-        <ul className="text-xs text-ink/55">
-          {uploaded.map((d, i) => (
-            <li key={i}>Submitted: {d.category}</li>
-          ))}
-        </ul>
+      {uploadError && <p role="alert" className="text-xs text-red-700">{uploadError}</p>}
+      {uploadedName && (
+        <p className="text-xs text-forest">
+          Submitted: {uploadedName.startsWith("https://") || uploadedName.startsWith("http://") ? "document link" : uploadedName}
+          {" · "}awaiting verification
+        </p>
       )}
+      <button type="submit" disabled={uploading} className="btn-primary mt-auto disabled:opacity-60">
+        {uploading ? "Uploading…" : document.buttonLabel}
+      </button>
     </form>
   );
 }

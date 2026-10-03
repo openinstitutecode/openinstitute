@@ -41,6 +41,20 @@ export function checkEnv(env: NodeJS.ProcessEnv = process.env): EnvIssue[] {
     else if (prod && o.startsWith("http://") && !/localhost|127\.0\.0\.1/.test(o)) issues.push({ key: "FRONTEND_ORIGIN", level: "warn", message: `"${o}" is plain http in production — terminate TLS in front of the app` });
   }
 
+  const storageKeys = ["SUPABASE_URL", "SUPABASE_SERVICE_ROLE_KEY", "SUPABASE_STORAGE_BUCKET"];
+  const configuredStorageKeys = storageKeys.filter((key) => Boolean(env[key]?.trim()));
+  if ((configuredStorageKeys.length > 0 && configuredStorageKeys.length < storageKeys.length) ||
+      (prod && configuredStorageKeys.length === 0)) {
+    issues.push({
+      key: "SUPABASE_STORAGE_BUCKET",
+      level: "error",
+      message: "Configure SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY and SUPABASE_STORAGE_BUCKET together; production requires a private Supabase Storage bucket for admission uploads.",
+    });
+  }
+  if (env.SUPABASE_URL && !isUrl(env.SUPABASE_URL)) {
+    issues.push({ key: "SUPABASE_URL", level: "error", message: "SUPABASE_URL must be a valid http(s) URL." });
+  }
+
   if (prod && !env.TRUST_PROXY) issues.push({ key: "TRUST_PROXY", level: "warn", message: "TRUST_PROXY unset: behind a proxy every client shares one IP (breaks per-IP rate limits and lockouts)" });
   if (prod && env.VBL_INTEGRATION_URL && !env.INTEGRATION_SECRET_ENCRYPTION_KEY) issues.push({ key: "INTEGRATION_SECRET_ENCRYPTION_KEY", level: "warn", message: "VBL integration is on but credentials are stored unencrypted at rest" });
 

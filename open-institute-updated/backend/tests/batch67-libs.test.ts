@@ -180,8 +180,18 @@ test("env validation", () => {
   const prod = { NODE_ENV: "production", DATABASE_URL: "postgresql://x", JWT_SECRET: "replace-with-a-long-random-string", FRONTEND_ORIGIN: "*" } as unknown as NodeJS.ProcessEnv;
   const errs = checkEnv(prod).filter((i) => i.level === "error").map((i) => i.key);
   assert.ok(errs.includes("JWT_SECRET") && errs.includes("FRONTEND_ORIGIN"));
-  const good = { NODE_ENV: "production", DATABASE_URL: "postgresql://x", JWT_SECRET: "x".repeat(40), FRONTEND_ORIGIN: "https://portal.example.ke", TRUST_PROXY: "1" } as unknown as NodeJS.ProcessEnv;
+  const good = {
+    NODE_ENV: "production",
+    DATABASE_URL: "postgresql://x",
+    JWT_SECRET: "x".repeat(40),
+    FRONTEND_ORIGIN: "https://portal.example.ke",
+    TRUST_PROXY: "1",
+    SUPABASE_URL: "https://project.supabase.co",
+    SUPABASE_SERVICE_ROLE_KEY: "server-only-secret",
+    SUPABASE_STORAGE_BUCKET: "admission-documents",
+  } as unknown as NodeJS.ProcessEnv;
   assert.equal(checkEnv(good).filter((i) => i.level === "error").length, 0);
+  assert.ok(checkEnv({ ...good, SUPABASE_SERVICE_ROLE_KEY: "" } as unknown as NodeJS.ProcessEnv).some((i) => i.key === "SUPABASE_STORAGE_BUCKET"));
   assert.equal(checkEnv({ NODE_ENV: "development" } as unknown as NodeJS.ProcessEnv).filter((i) => i.level === "error").length, 0);
 });
 

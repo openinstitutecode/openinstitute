@@ -252,10 +252,11 @@ After the backend has completed startup, you may confirm migrations in Supabase:
 ## Part 8 — Supabase security and operations
 
 - The backend's `DATABASE_URL` has database access and belongs only in the backend service. Do not add it to frontend environment variables.
-- This application does not need Supabase's anon or service-role API keys. Do not put either in the frontend. Because Prisma migrations create application tables in `public`, review Supabase's **Data API** exposure and grants. If the application will not use Supabase's REST/GraphQL APIs, disable the Data API if the project settings allow it. Otherwise, ensure no unintended `anon`/`authenticated` grants or policies expose application tables. RLS and grants are separate controls; do not assume that a private Render API automatically secures the Supabase Data API.
+- Create a **private** bucket in Supabase Storage (for example, `admission-documents`). In the Render backend service, set `SUPABASE_URL`, `SUPABASE_STORAGE_BUCKET=admission-documents`, and `SUPABASE_SERVICE_ROLE_KEY` using the project's server-side service-role/secret key. The key is used only by the backend to upload and retrieve applicant files; never put it in the frontend, Git, or chat. All three settings must be supplied together. Existing local-disk uploads remain readable, but new uploads use the private bucket once configured.
+- Because Prisma migrations create application tables in `public`, review Supabase's **Data API** exposure and grants. If the application will not use Supabase's REST/GraphQL APIs, disable the Data API if the project settings allow it. Otherwise, ensure no unintended `anon`/`authenticated` grants or policies expose application tables. RLS and grants are separate controls; do not assume that a private Render API automatically secures the Supabase Data API.
 - Avoid adding an IP allowlist until you have confirmed how your Render plan exposes outbound IP addresses and that the chosen Supabase connection method can still be reached. An incorrect allowlist can make migrations and the API fail to connect.
 - Configure database backups/point-in-time recovery appropriate to the Supabase plan. Confirm the retention period and practice a restore.
-- Monitor Render's disk usage and arrange backups/export of uploaded files. A persistent disk is not a substitute for an off-provider backup.
+- Supabase Storage holds new admissions uploads durably outside Render's ephemeral filesystem. Configure bucket retention/backups and periodically confirm documents can be retrieved through the authenticated application. Other application uploads may still use `UPLOAD_DIR` and need a persistent disk or separate durable storage.
 - Keep Render backend and frontend in the same region. Keep Supabase reasonably close to reduce query latency.
 - Do not import real student data until production secrets, TLS, backups, retention/privacy obligations, and account access have been reviewed.
 
@@ -297,7 +298,8 @@ After confirming the corrected commit is present in the backend service's deploy
 | Frontend Docker deploy fails during nginx startup | Ensure `API_UPSTREAM` is a hostname (and port for private service), without a URL scheme; set the scheme separately in `API_UPSTREAM_SCHEME`. |
 | Browser reports CORS errors | Set backend `FRONTEND_ORIGIN` to the exact browser origin (scheme + hostname, no path), save, and wait for backend redeploy. |
 | Admin login fails after changing Render seed variables | The seed does not update an existing account's password. Use the password recovery procedure; do not expect a redeploy to reset it. |
-| Uploads disappear or upload routes fail | Confirm a persistent disk is mounted at `/app/uploads`, the backend has disk capacity, and the selected plan supports persistent disks. |
+| Admissions upload fails with a storage error | Confirm the private Supabase bucket exists and the backend Render service has matching `SUPABASE_URL`, `SUPABASE_STORAGE_BUCKET`, and `SUPABASE_SERVICE_ROLE_KEY` values. Keep the service-role key backend-only. |
+| Other uploaded media disappears | Those media routes may still use `UPLOAD_DIR`; confirm a persistent disk is mounted at `/app/uploads`, the backend has disk capacity, and the selected plan supports persistent disks. |
 | Service works on Render URL but not custom domain | Recheck Render's required DNS records, TLS status, and that backend `FRONTEND_ORIGIN` includes the custom origin. |
 
 ## Official references

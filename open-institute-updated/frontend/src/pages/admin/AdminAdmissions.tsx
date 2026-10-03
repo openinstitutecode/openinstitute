@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import PortalShell from "../../components/portal/PortalShell";
 import { PortalSection, Badge } from "../../components/portal/Primitives";
-import { apiFetch, apiFetchBlob, openOrDownloadBlob, ApiError, useCurrentUserName } from "../../lib/api";
+import { apiFetch, apiFetchBlob, ApiError, useCurrentUserName } from "../../lib/api";
 import { LoadingState } from "../../components/portal/StateViews";
 
 const links = [
@@ -75,6 +75,8 @@ type ApplicationDocument = {
   id: string;
   category: string;
   fileUrl: string;
+  mimeType: string | null;
+  originalName: string | null;
   verified: boolean;
   verifiedAt: string | null;
   uploadedAt: string;
@@ -96,6 +98,11 @@ export default function AdminAdmissions() {
   const userName = useCurrentUserName();
   const [applications, setApplications] = useState<Application[] | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [preview, setPreview] = useState<{ url: string; mimeType: string; title: string; isObjectUrl: boolean } | null>(null);
+
+  useEffect(() => () => {
+    if (preview?.isObjectUrl) URL.revokeObjectURL(preview.url);
+  }, [preview]);
 
   useEffect(() => {
     apiFetch<Application[]>("/applications")
@@ -157,7 +164,12 @@ export default function AdminAdmissions() {
     try {
       if (document.fileUrl.startsWith("/api/")) {
         const result = await apiFetchBlob(document.fileUrl.replace(/^\/api/, ""));
-        openOrDownloadBlob(result.blob, result.filename);
+        setPreview({
+          url: URL.createObjectURL(result.blob),
+          mimeType: result.blob.type || document.mimeType || "",
+          title: result.filename ?? document.originalName ?? documentCategoryName(document.category),
+          isObjectUrl: true,
+        });
       } else {
         window.open(document.fileUrl, "_blank", "noopener,noreferrer");
       }
@@ -186,6 +198,7 @@ export default function AdminAdmissions() {
                     <th className="pb-3 pr-4 font-medium">Applicant</th>
                     <th className="pb-3 pr-4 font-medium">Programme</th>
                     <th className="pb-3 pr-4 font-medium">Status</th>
+                    <th className="pb-3 pr-4 font-medium">Documents to review</th>
                     <th className="pb-3 font-medium">Decision</th>
                   </tr>
                 </thead>
@@ -205,26 +218,35 @@ export default function AdminAdmissions() {
                         <Badge tone={a.status === "ADMITTED" ? "ok" : a.status === "REJECTED" ? "danger" : "neutral"}>
                           {a.status}
                         </Badge>
-                        {/* RG002 — documents submitted for this application,
-                            each individually verifiable before a decision. */}
+                      </td>
+                      <td className="min-w-64 py-3 pr-4 align-top">
                         {a.documents.length > 0 ? (
-                          <ul className="mt-2 space-y-1">
+                          <div className="space-y-2">
                             {a.documents.map((d) => (
-                              <li key={d.id} className="text-xs">
-                                <span className="text-ink/60">{d.category}</span>{" "}
-                                <button onClick={() => openDocument(d)} className="text-navy underline">View</button>{" "}
-                                <Badge tone={d.verified ? "ok" : "warn"}>{d.verified ? "Verified" : "Unverified"}</Badge>{" "}
-                                <button
-                                  onClick={() => verifyDocument(a.id, d.id, !d.verified)}
-                                  className="text-navy hover:underline"
-                                >
-                                  {d.verified ? "Unverify" : "Verify"}
-                                </button>
-                              </li>
+                              <div key={d.id} className="border border-line p-2">
+                                <div className="flex flex-wrap items-center gap-2">
+                                  <span className="font-medium">{documentCategoryName(d.category)}</span>
+                                  <Badge tone={d.verified ? "ok" : "warn"}>{d.verified ? "Verified" : "Needs review"}</Badge>
+                                </div>
+                                <p className="mt-1 truncate text-xs text-ink/50" title={d.originalName ?? undefined}>
+                                  {d.originalName ?? (d.fileUrl.startsWith("/api/") ? "Uploaded file" : "External document link")}
+                                </p>
+                                <div className="mt-2 flex gap-3 text-xs">
+                                  <button onClick={() => openDocument(d)} className="font-medium text-navy underline">
+                                    {d.fileUrl.startsWith("/api/") ? "Preview document" : "Open link"}
+                                  </button>
+                                  <button
+                                    onClick={() => verifyDocument(a.id, d.id, !d.verified)}
+                                    className="font-medium text-navy hover:underline"
+                                  >
+                                    {d.verified ? "Mark unverified" : "Verify document"}
+                                  </button>
+                                </div>
+                              </div>
                             ))}
-                          </ul>
+                          </div>
                         ) : (
-                          <p className="mt-2 text-xs text-ink/40">No documents submitted yet.</p>
+                          <p className="text-xs text-ink/40">No documents submitted yet.</p>
                         )}
                       </td>
                       <td className="py-3 align-top">
@@ -263,6 +285,38 @@ export default function AdminAdmissions() {
           )}
         </PortalSection>
       </div>
+      {preview && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4"
+          role="dialog"
+          aria-modal="true"
+          aria-label={`Document preview: ${preview.title}`}
+          onClick={(event) => {
+            if (event.target === event.currentTarget) setPreview(null);
+          }}
+        >
+          <section className="flex max-h-[92vh] w-full max-w-5xl flex-col bg-white p-4">
+            <div className="mb-3 flex items-center justify-between gap-4">
+              <h2 className="truncate font-medium">{preview.title}</h2>
+              <button onClick={() => setPreview(null)} className="btn-secondary shrink-0">Close preview</button>
+            </div>
+            {preview.mimeType.startsWith("image/") ? (
+              <img src={preview.url} alt={preview.title} className="max-h-[78vh] w-full object-contain" />
+            ) : preview.mimeType === "application/pdf" ? (
+              <iframe src={preview.url} title={preview.title} className="h-[78vh] w-full border border-line" />
+            ) : (
+              <a href={preview.url} download={preview.title} className="text-navy underline">Download document</a>
+            )}
+          </section>
+        </div>
+      )}
     </PortalShell>
   );
+}
+
+function documentCategoryName(category: string) {
+  if (category === "id_document") return "National ID";
+  if (category === "certificate") return "KCSE certificate";
+  if (category === "portrait_photo") return "Passport photo";
+  return category.replace(/_/g, " ");
 }
