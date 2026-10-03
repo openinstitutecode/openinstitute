@@ -24,6 +24,8 @@ trainersRouter.get(
       }
       return {
         id: t.id,
+        staffNumber: t.staffNumber,
+        photoUrl: t.photoUrl,
         fullName: t.fullName,
         department: t.department,
         email: t.user.email,
@@ -79,11 +81,18 @@ trainersRouter.post(
       return res.status(400).json({ message: "That user's role is not TRAINER — create the account with the TRAINER role first (Users & RBAC)." });
     }
 
+    const sequence = await prisma.idSequence.upsert({
+      where: { name: "staff" },
+      create: { name: "staff", value: 1 },
+      update: { value: { increment: 1 } },
+    });
+    const staffNumber = `STF-${new Date().getFullYear()}-${String(sequence.value).padStart(6, "0")}`;
     const trainer = await prisma.trainer
       .create({
         data: {
           ...parsed.data,
           licenceExpiry: parsed.data.licenceExpiry ? new Date(parsed.data.licenceExpiry) : undefined,
+          staffNumber,
         },
       })
       .catch(() => null);

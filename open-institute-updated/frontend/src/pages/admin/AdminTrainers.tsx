@@ -73,6 +73,8 @@ const links = [
 
 type TrainerRow = {
   id: string;
+  staffNumber: string | null;
+  photoUrl: string | null;
   fullName: string;
   department: string | null;
   email: string;
@@ -302,7 +304,7 @@ export default function AdminTrainers() {
                   {trainers.map((t) => (
                     <Fragment key={t.id}>
                       <tr key={t.id}>
-                        <td className="py-3 pr-4">{t.fullName}<br /><span className="text-xs text-ink/40">{t.email}</span></td>
+                        <td className="py-3 pr-4">{t.fullName}<br /><span className="text-xs text-ink/40">{t.staffNumber ?? "No staff ID"} · {t.email}</span></td>
                         <td className="py-3 pr-4">{t.department ?? "—"}</td>
                         <td className="py-3 pr-4 font-mono text-xs">{t.tvetaLicenceNumber ?? "—"}</td>
                         <td className="py-3 pr-4">{t.licenceExpiry ? new Date(t.licenceExpiry).toLocaleDateString() : "—"}</td>

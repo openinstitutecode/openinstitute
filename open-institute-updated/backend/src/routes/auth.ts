@@ -29,9 +29,11 @@ authRouter.post("/login", async (req, res) => {
   if (!parsed.success) {
     return res.status(400).json({ message: "Enter a valid email and password." });
   }
-  const { email, password } = parsed.data;
+  const email = parsed.data.email.trim().toLowerCase();
+  const { password } = parsed.data;
 
-  const user = await prisma.user.findUnique({ where: { email } });
+  const user = await prisma.user.findUnique({ where: { email } })
+    ?? await prisma.user.findUnique({ where: { email: parsed.data.email } });
 
   // KSEC-005 / KFX-009 — brute-force lockout, per account AND per IP, from the shared
   // FailedLoginAttempt table (holds across restarts and API instances). Attempts rejected *because*
@@ -89,7 +91,7 @@ authRouter.post("/login", async (req, res) => {
   });
 
   const token = jwt.sign(
-    { sub: user.id, role: user.role, email: user.email },
+    { sub: user.id, role: user.role, email: user.email, mustChangePassword: user.mustChangePassword },
     JWT_SECRET,
     { expiresIn: sessionTtlSeconds() }
   );
@@ -103,7 +105,7 @@ authRouter.post("/login", async (req, res) => {
     },
   });
 
-  res.json({ token, role: user.role });
+  res.json({ token, role: user.role, mustChangePassword: user.mustChangePassword });
 });
 
 // ---------------------------------------------------------------------------
@@ -178,8 +180,13 @@ authRouter.post("/change-password", requireAuth, async (req: AuthedRequest, res)
   if (!check.ok) return res.status(400).json({ message: check.problems.join(" "), code: "WEAK_PASSWORD", issues: check.problems });
   if (await bcrypt.compare(parsed.data.newPassword, user.passwordHash)) return res.status(400).json({ message: "Choose a password you have not used before.", code: "PASSWORD_REUSED" });
   await prisma.$transaction([
-    prisma.user.update({ where: { id: user.id }, data: { passwordHash: await bcrypt.hash(parsed.data.newPassword, bcryptRounds()) } }),
+    prisma.user.update({ where: { id: user.id }, data: { passwordHash: await bcrypt.hash(parsed.data.newPassword, bcryptRounds()), mustChangePassword: false } }),
     prisma.auditLog.create({ data: { userId: user.id, action: "PASSWORD_CHANGED", entityType: "User", entityId: user.id } }),
   ]);
-  res.json({ message: "Password changed." });
+  const token = jwt.sign(
+    { sub: user.id, role: user.role, email: user.email, mustChangePassword: false },
+    JWT_SECRET,
+    { expiresIn: sessionTtlSeconds() }
+  );
+  res.json({ message: "Password changed.", token, role: user.role });
 });

@@ -15,6 +15,7 @@ const Faqs = lazy(() => import("./pages/Faqs"));
 const Complaints = lazy(() => import("./pages/Complaints"));
 const Rpl = lazy(() => import("./pages/Rpl"));
 import Login from "./pages/Login";
+const ChangePassword = lazy(() => import("./pages/ChangePassword"));
 const ForgotPassword = lazy(() => import("./pages/ForgotPassword")); // Batch 67 — KFX-004
 import NotFound from "./pages/NotFound";
 
@@ -201,6 +202,7 @@ export default function App() {
       <Route path="/verify/:documentId" element={<PublicLayout><Verify /></PublicLayout>} />
       <Route path="/verify-student" element={<PublicLayout><VerifyStudent /></PublicLayout>} />
       <Route path="/login" element={<PublicLayout><Login /></PublicLayout>} />
+      <Route path="/change-password" element={<ChangePassword />} />
 
       {/* Authenticated portals */}
       <Route element={<RequireToken />}>

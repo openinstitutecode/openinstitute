@@ -151,7 +151,7 @@ Summary counts are at the bottom. This file should be re-run/re-checked after ev
 | Code | Feature | Status | Note |
 |---|---|---|---|
 | RG001 | Student master record | ✅ | Student model |
-| RG002 | Admission verification | ✅ | Real gap found: GET /applications never even fetched Document rows, and there was no way for an applicant (no account until admitted) to submit a document at all. New public POST /applications/:refNumber/documents (ref + applied email as identity check), PATCH /:id/documents/:docId/verify for staff, and the decision route now server-side rejects ADMITTED while any submitted document is unverified — an application with zero documents is not blocked, that's a separate reviewer judgment |
+| RG002 | Admission verification | ✅ | Applicants can submit links or local PNG/PDF files plus a required passport photo. Admissions verifies ID, qualification and photo documents; verification of the complete set atomically creates/activates a STUDENT account, student record, sequential student/admission numbers and digital card identity. The applicant's hashed temporary password is inaccessible until admission and is forced to change at first login. |
 | RG003 | Enrollment verification | ✅ | GET /registry/enrollment-verification/:studentId — registrar's structured view of a student's real enrollment records, distinct from the RG033 letter |
 | RG004 | Programme registration | ✅ | POST /registry/programme-registration — registrar transfers a student between programmes, writes an AcademicRecordChange audit row |
 | RG005 | Course registration | ✅ | POST /registry/course-registration — registrar-side administrative enrollment, rejects a duplicate exactly like the student self-service path (SP012) does |

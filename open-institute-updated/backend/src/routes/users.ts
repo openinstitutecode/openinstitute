@@ -23,6 +23,9 @@ usersRouter.get(
         isActive: true,
         lastLoginAt: true,
         createdAt: true,
+        staff: { select: { staffNumber: true } },
+        trainer: { select: { staffNumber: true } },
+        student: { select: { studentNumber: true } },
       },
       orderBy: { createdAt: "desc" },
       skip: win.skip, take: win.take,
@@ -68,13 +71,26 @@ usersRouter.post(
       },
     });
 
+    let staffNumber: string | undefined;
     if (parsed.data.role === "TRAINER") {
+      const sequence = await prisma.idSequence.upsert({
+        where: { name: "staff" },
+        create: { name: "staff", value: 1 },
+        update: { value: { increment: 1 } },
+      });
+      staffNumber = `STF-${new Date().getFullYear()}-${String(sequence.value).padStart(6, "0")}`;
       await prisma.trainer.create({
-        data: { userId: user.id, fullName: parsed.data.fullName },
+        data: { userId: user.id, fullName: parsed.data.fullName, staffNumber, qualifications: [] },
       });
     } else if (!["STUDENT", "APPLICANT", "EMPLOYER"].includes(parsed.data.role)) {
+      const sequence = await prisma.idSequence.upsert({
+        where: { name: "staff" },
+        create: { name: "staff", value: 1 },
+        update: { value: { increment: 1 } },
+      });
+      staffNumber = `STF-${new Date().getFullYear()}-${String(sequence.value).padStart(6, "0")}`;
       await prisma.staffProfile.create({
-        data: { userId: user.id, fullName: parsed.data.fullName },
+        data: { userId: user.id, fullName: parsed.data.fullName, staffNumber },
       });
     }
 
@@ -88,7 +104,7 @@ usersRouter.post(
       },
     });
 
-    res.status(201).json({ id: user.id, email: user.email, role: user.role });
+    res.status(201).json({ id: user.id, email: user.email, role: user.role, staffNumber, emailStatus: staffNumber ? "not_configured" : undefined });
   }
 );
 

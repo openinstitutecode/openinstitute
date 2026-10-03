@@ -68,6 +68,7 @@ model User {
   passwordHash String
   role         Role
   isActive     Boolean   @default(true)
+  mustChangePassword Boolean @default(false)
   mfaEnabled   Boolean   @default(false)
   lastLoginAt  DateTime?
   createdAt    DateTime  @default(now())
@@ -127,11 +128,13 @@ model User {
 
 model StaffProfile {
   id             String   @id @default(cuid())
+  staffNumber    String?  @unique
   userId         String   @unique
   user           User     @relation(fields: [userId], references: [id])
   fullName       String
   department     String?
   title          String?
+  photoUrl       String?
   nationalIdNo   String?  @unique
   hireDate       DateTime?
   contractType   String?
@@ -156,6 +159,7 @@ model Application {
   refNumber     String            @unique
   fullName      String
   email         String
+  temporaryPasswordHash String?
   phone         String
   programmeId   String
   programme     Programme         @relation(fields: [programmeId], references: [id])
@@ -165,6 +169,8 @@ model Application {
   priorLearningClaim Boolean      @default(false)
   status        ApplicationStatus @default(SUBMITTED)
   documents     Document[]
+  portraitPhotoUrl String?
+  student       Student?
   reviewedById  String?
   decisionNote  String?
   createdAt     DateTime          @default(now())
@@ -190,6 +196,9 @@ model Student {
   user            User           @relation(fields: [userId], references: [id])
   studentNumber   String         @unique
   admissionNumber String         @unique
+  cardId          String         @unique @default(cuid())
+  applicationId   String?        @unique
+  application     Application?   @relation(fields: [applicationId], references: [id])
   fullName        String
   programmeId     String
   programme       Programme      @relation(fields: [programmeId], references: [id])
@@ -730,9 +739,11 @@ model Mentorship {
 
 model Trainer {
   id                 String   @id @default(cuid())
+  staffNumber        String?  @unique
   userId             String   @unique
   user               User     @relation(fields: [userId], references: [id])
   fullName           String
+  photoUrl           String?
   tvetaLicenceNumber String?
   licenceExpiry      DateTime?
   qualifications     String[]
@@ -2595,6 +2606,9 @@ model Document {
   application   Application? @relation(fields: [applicationId], references: [id])
   category      String   // id_document, certificate, policy, moU, evidence
   fileUrl       String
+  storageKey    String?
+  mimeType      String?
+  originalName  String?
   version       Int      @default(1)
   uploadedAt    DateTime @default(now())
   // RG002 — admission document verification: a submitted application
@@ -2603,6 +2617,12 @@ model Document {
   verified      Boolean  @default(false)
   verifiedById  String?
   verifiedAt    DateTime?
+}
+
+model IdSequence {
+  name      String   @id
+  value     Int      @default(0)
+  updatedAt DateTime @updatedAt
 }
 
 model Notification {

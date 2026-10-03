@@ -1,7 +1,9 @@
 import { Router } from "express";
 import { z } from "zod";
+import bcrypt from "bcryptjs";
 import { prisma } from "../lib/prisma.js";
 import { requireAuth, requireRole, AuthedRequest } from "../middleware/auth.js";
+import { bcryptRounds, validatePassword } from "../lib/password-policy.js";
 
 export const departmentsRouter = Router();
 
@@ -83,13 +85,27 @@ export const staffRouter = Router();
 staffRouter.get(
   "/",
   requireAuth,
-  requireRole("HR_OFFICER", "PRINCIPAL", "SUPER_ADMIN"),
+  requireRole("HR_OFFICER", "PRINCIPAL", "ICT_ADMIN", "SUPER_ADMIN"),
   async (_req: AuthedRequest, res) => {
-    const staff = await prisma.staffProfile.findMany({
+    const [staff, trainers] = await Promise.all([
+      prisma.staffProfile.findMany({
       include: { user: { select: { email: true, role: true, isActive: true } } },
       orderBy: { fullName: "asc" },
-    });
-    res.json(staff);
+      }),
+      prisma.trainer.findMany({
+        include: { user: { select: { email: true, role: true, isActive: true } } },
+        orderBy: { fullName: "asc" },
+      }),
+    ]);
+    res.json([
+      ...staff.map((profile) => ({ ...profile, profileType: "staff" })),
+      ...trainers.map((profile) => ({
+        ...profile,
+        title: "Trainer",
+        contractType: null,
+        profileType: "trainer",
+      })),
+    ]);
   }
 );
 
@@ -103,15 +119,95 @@ const staffSchema = z.object({
   contractType: z.string().optional(),
 });
 
+const STAFF_ROLES = [
+  "BOARD_MEMBER", "PRINCIPAL", "DEPUTY_PRINCIPAL", "REGISTRAR", "FINANCE_OFFICER",
+  "ACCOUNTANT", "HR_OFFICER", "QA_OFFICER", "ICT_ADMIN", "LIBRARIAN",
+  "ADMISSIONS_OFFICER", "EXAMINATION_OFFICER", "DEPARTMENT_HEAD", "PROGRAMME_COORDINATOR",
+  "TRAINER", "COUNSELLOR", "CAREER_OFFICER", "ATTACHMENT_OFFICER", "EXTERNAL_EXAMINER",
+  "AUDITOR", "REGULATORY_INSPECTOR",
+] as const;
+const provisionStaffSchema = z.object({
+  email: z.string().email().transform((value) => value.trim().toLowerCase()),
+  password: z.string().min(1).max(128),
+  role: z.enum(STAFF_ROLES),
+  fullName: z.string().min(2),
+  department: z.string().optional(),
+  title: z.string().optional(),
+  photoDataUrl: z.string().regex(/^data:image\/(?:png|jpeg);base64,/).max(500_000).refine((dataUrl) => {
+    const [header, data] = dataUrl.split(",", 2);
+    const bytes = Buffer.from(data ?? "", "base64");
+    if (header === "data:image/png;base64") return bytes.length >= 8 && bytes.subarray(0, 8).equals(Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]));
+    return bytes.length >= 3 && bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff;
+  }, "Photo content must match PNG or JPEG.").optional(),
+});
+
 staffRouter.post(
   "/",
   requireAuth,
-  requireRole("HR_OFFICER", "SUPER_ADMIN"),
+  requireRole("HR_OFFICER", "PRINCIPAL", "ICT_ADMIN", "SUPER_ADMIN"),
   async (req: AuthedRequest, res) => {
+    const provisioned = provisionStaffSchema.safeParse(req.body);
+    if (provisioned.success) {
+      const passwordCheck = validatePassword(provisioned.data.password, {
+        email: provisioned.data.email,
+        name: provisioned.data.fullName,
+      });
+      if (!passwordCheck.ok) {
+        return res.status(400).json({ message: passwordCheck.problems.join(" "), code: "WEAK_PASSWORD", issues: passwordCheck.problems });
+      }
+      if (await prisma.user.findUnique({ where: { email: provisioned.data.email } })) {
+        return res.status(409).json({ message: "An account with this email already exists." });
+      }
+      const created = await prisma.$transaction(async (tx) => {
+        const number = await tx.idSequence.upsert({
+          where: { name: "staff" },
+          create: { name: "staff", value: 1 },
+          update: { value: { increment: 1 } },
+        });
+        const staffNumber = `STF-${new Date().getFullYear()}-${String(number.value).padStart(6, "0")}`;
+        const user = await tx.user.create({
+          data: {
+            email: provisioned.data.email,
+            passwordHash: await bcrypt.hash(provisioned.data.password, bcryptRounds()),
+            role: provisioned.data.role,
+            isActive: true,
+            mustChangePassword: true,
+          },
+        });
+        const photoUrl = provisioned.data.photoDataUrl;
+        const profile = provisioned.data.role === "TRAINER"
+          ? await tx.trainer.create({
+              data: { userId: user.id, fullName: provisioned.data.fullName, department: provisioned.data.department, photoUrl, staffNumber, qualifications: [] },
+            })
+          : await tx.staffProfile.create({
+              data: { userId: user.id, fullName: provisioned.data.fullName, department: provisioned.data.department, title: provisioned.data.title, photoUrl, staffNumber },
+            });
+        await tx.auditLog.create({
+          data: { userId: req.user!.id, action: "STAFF_ACCOUNT_CREATED", entityType: provisioned.data.role === "TRAINER" ? "Trainer" : "StaffProfile", entityId: profile.id, metadata: { role: provisioned.data.role, staffNumber } },
+        });
+        return { userId: user.id, profileId: profile.id, staffNumber, role: user.role, email: user.email };
+      }).catch((error: unknown) => {
+        if (error instanceof Error && error.message.includes("Unique constraint")) return null;
+        throw error;
+      });
+      if (!created) return res.status(409).json({ message: "An account or staff profile with these details already exists." });
+      return res.status(201).json({ ...created, emailStatus: "not_configured" });
+    }
+
     const parsed = staffSchema.safeParse(req.body);
     if (!parsed.success) return res.status(400).json({ message: "Provide userId and fullName at minimum." });
+    const linkedUser = await prisma.user.findUnique({ where: { id: parsed.data.userId } });
+    if (!linkedUser) return res.status(404).json({ message: "No user with that ID." });
+    if (["STUDENT", "APPLICANT", "ALUMNUS", "EMPLOYER", "TRAINER"].includes(linkedUser.role)) {
+      return res.status(400).json({ message: "Choose a staff account for this profile, or create a trainer profile through Trainer Management." });
+    }
+    const number = await prisma.idSequence.upsert({
+      where: { name: "staff" },
+      create: { name: "staff", value: 1 },
+      update: { value: { increment: 1 } },
+    });
     const profile = await prisma.staffProfile
-      .create({ data: { ...parsed.data, hireDate: parsed.data.hireDate ? new Date(parsed.data.hireDate) : undefined } })
+      .create({ data: { ...parsed.data, staffNumber: `STF-${new Date().getFullYear()}-${String(number.value).padStart(6, "0")}`, hireDate: parsed.data.hireDate ? new Date(parsed.data.hireDate) : undefined } })
       .catch(() => null);
     if (!profile) return res.status(409).json({ message: "A staff profile already exists for that user." });
     res.status(201).json(profile);

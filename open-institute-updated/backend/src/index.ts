@@ -80,6 +80,7 @@ import { coursesRouter } from "./routes/courses.js";
 import { procurementRouter } from "./routes/procurement.js";
 import { contentRouter } from "./routes/content.js";
 import { mediaRouter } from "./routes/media.js";
+import { enforceRoleScope } from "./middleware/role-scope.js";
 import { quizzesRouter } from "./routes/quizzes.js";
 import { quizzesV2Router } from "./routes/quizzes-v2.js"; // Batch 76
 import { quizAttemptsRouter } from "./routes/quiz-attempts.js"; // Batch 76
@@ -166,6 +167,7 @@ app.get("/api/ready", async (_req, res) => {
 });
 
 app.use("/api", auditStudentAccess); // Batch 74 — KDATA-006
+app.use("/api", enforceRoleScope);
 app.use("/api/auth", authRouter);
 app.use("/api/applications", applicationsRouter);
 app.use("/api/programmes", programmesRouter);

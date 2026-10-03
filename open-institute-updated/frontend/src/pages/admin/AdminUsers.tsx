@@ -77,6 +77,9 @@ type UserRow = {
   role: string;
   isActive: boolean;
   lastLoginAt: string | null;
+  staff?: { staffNumber: string | null } | null;
+  trainer?: { staffNumber: string | null } | null;
+  student?: { studentNumber: string } | null;
 };
 
 export default function AdminUsers() {
@@ -123,6 +126,7 @@ export default function AdminUsers() {
                   <tr className="border-b border-line text-ink/50">
                     <th className="pb-3 pr-4 font-medium">Email</th>
                     <th className="pb-3 pr-4 font-medium">Role</th>
+                    <th className="pb-3 pr-4 font-medium">ID</th>
                     <th className="pb-3 pr-4 font-medium">Last login</th>
                     <th className="pb-3 pr-4 font-medium">Status</th>
                     <th className="pb-3 font-medium">Action</th>
@@ -133,6 +137,7 @@ export default function AdminUsers() {
                     <tr key={u.id}>
                       <td className="py-3 pr-4">{u.email}</td>
                       <td className="py-3 pr-4 font-mono text-xs">{u.role}</td>
+                      <td className="py-3 pr-4 font-mono text-xs">{u.student?.studentNumber ?? u.staff?.staffNumber ?? u.trainer?.staffNumber ?? "—"}</td>
                       <td className="py-3 pr-4 text-ink/60">
                         {u.lastLoginAt ? new Date(u.lastLoginAt).toLocaleString() : "Never"}
                       </td>

@@ -10,6 +10,7 @@ type FormState = {
   studyMode: string;
   kcseIndex: string;
   kcseGrade: string;
+  password: string;
 };
 
 const initialState: FormState = {
@@ -20,6 +21,7 @@ const initialState: FormState = {
   studyMode: "online",
   kcseIndex: "",
   kcseGrade: "",
+  password: "",
 };
 
 export default function Admissions() {
@@ -50,6 +52,7 @@ export default function Admissions() {
       }
       const data = await res.json();
       setSubmitted({ refNumber: data.refNumber });
+      setForm((current) => ({ ...current, password: "" }));
     } catch (err) {
       // The backend may not be running in this environment — degrade gracefully.
       setError(
@@ -72,7 +75,7 @@ export default function Admissions() {
         <p className="mt-4 max-w-prose text-ink/70">
           Your reference number is{" "}
           <span className="font-mono text-navy">{submitted.refNumber}</span>.
-          We'll email you once admissions has reviewed your documents.
+          Keep this number for your records. Admissions will review your uploaded documents before your account is activated.
         </p>
         <DocumentUpload refNumber={submitted.refNumber} email={form.email} />
       </div>
@@ -126,6 +129,10 @@ export default function Admissions() {
               />
             </Field>
           </div>
+          <Field label="Temporary password" required>
+            <input required type="password" minLength={10} autoComplete="new-password" value={form.password} onChange={(e) => update("password", e.target.value)} className="input" />
+            <span className="mt-1 block text-xs text-ink/50">This is stored securely and will not work until admissions approves your application. You must change it at first sign-in.</span>
+          </Field>
         </fieldset>
 
         <fieldset className="space-y-5">
@@ -198,13 +205,10 @@ export default function Admissions() {
   );
 }
 
-// RG002 — the applicant has no account yet (one is only created on
-// admission), so document upload happens right here against the
-// reference number + the email they applied with, which admissions staff
-// then verify. Actual file storage is out of scope for this build; this
-// records a reference the same way the authenticated document routes do.
 function DocumentUpload({ refNumber, email }: { refNumber: string; email: string }) {
-  const [category, setCategory] = useState<"id_document" | "certificate">("id_document");
+  const fileInput = useRef<HTMLInputElement>(null);
+  const [category, setCategory] = useState<"id_document" | "certificate" | "portrait_photo">("id_document");
+  const [file, setFile] = useState<File | null>(null);
   const [fileUrl, setFileUrl] = useState("");
   const [uploaded, setUploaded] = useState<{ category: string }[]>([]);
   const [uploadError, setUploadError] = useState<string | null>(null);
@@ -215,11 +219,17 @@ function DocumentUpload({ refNumber, email }: { refNumber: string; email: string
     setUploadError(null);
     setUploading(true);
     try {
-      const res = await fetch(`/api/applications/${refNumber}/documents`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, category, fileUrl }),
-      });
+      const res = file
+        ? await fetch(`/api/applications/${refNumber}/files?email=${encodeURIComponent(email)}&category=${category}`, {
+            method: "POST",
+            headers: { "Content-Type": file.type, "X-File-Name": encodeURIComponent(file.name) },
+            body: file,
+          })
+        : await fetch(`/api/applications/${refNumber}/documents`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ email, category, fileUrl }),
+          });
       if (!res.ok) {
         const body = await res.json().catch(() => ({}));
         throw new Error(body.message ?? "Could not submit that document.");
@@ -227,6 +237,8 @@ function DocumentUpload({ refNumber, email }: { refNumber: string; email: string
       const data = await res.json();
       setUploaded((docs) => [...docs, { category: data.category }]);
       setFileUrl("");
+      setFile(null);
+      if (fileInput.current) fileInput.current.value = "";
     } catch (err) {
       setUploadError(err instanceof Error ? err.message : "Something went wrong.");
     } finally {
@@ -238,21 +250,33 @@ function DocumentUpload({ refNumber, email }: { refNumber: string; email: string
     <form onSubmit={handleUpload} className="mt-10 max-w-xl space-y-4 border-t border-line pt-8">
       <p className="font-display text-lg">Submit your documents</p>
       <p className="text-sm text-ink/60">
-        A link to your ID and your KCSE certificate (or equivalent), so
-        admissions can verify them.
+        Upload a national ID, your KCSE certificate (or equivalent), and a passport photo for your digital student ID. PNG and PDF documents are accepted; portrait photos must be PNG or JPEG.
       </p>
       <Field label="Document type" required>
-        <select value={category} onChange={(e) => setCategory(e.target.value as "id_document" | "certificate")} className="input">
+        <select value={category} onChange={(e) => { setCategory(e.target.value as "id_document" | "certificate" | "portrait_photo"); setFile(null); }} className="input">
           <option value="id_document">National ID</option>
           <option value="certificate">KCSE certificate / prior qualification</option>
+          <option value="portrait_photo">Passport photo (required for digital ID)</option>
         </select>
       </Field>
-      <Field label="Link to the scanned document" required>
+      <Field label={category === "portrait_photo" ? "Choose a passport photo" : "Choose a PNG or PDF document"}>
         <input
-          required
+          ref={fileInput}
+          type="file"
+          required={!file && !fileUrl}
+          accept={category === "portrait_photo" ? "image/png,image/jpeg" : "image/png,application/pdf"}
+          onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+          className="input"
+        />
+        <span className="mt-1 block text-xs text-ink/50">Maximum file size: {category === "portrait_photo" ? "5 MB" : "10 MB"}.</span>
+      </Field>
+      <p className="text-xs text-ink/50">Or, if your document is already hosted, provide a document link instead:</p>
+      <Field label="Existing document link">
+        <input
           type="url"
           value={fileUrl}
           onChange={(e) => setFileUrl(e.target.value)}
+          required={!file}
           className="input"
           placeholder="https://drive.google.com/..."
         />

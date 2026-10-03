@@ -181,9 +181,11 @@ credentialsRouter.get("/student-id/mine", requireAuth, async (req: AuthedRequest
 
   const payload = {
     studentNumber: student.studentNumber,
+    cardId: student.cardId,
     fullName: student.fullName,
     programme: student.programme.name,
     academicStatus: student.academicStatus,
+    photoDataUrl: student.photoDataUrl,
   };
   const signedHash = signDocument(payload);
   const verificationUrl = `${process.env.PUBLIC_BASE_URL ?? "https://kvbdtc.ac.ke"}/verify-student/${student.studentNumber}`;

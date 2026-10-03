@@ -48,9 +48,11 @@ const links = [
 
 type StudentId = {
   studentNumber: string;
+  cardId: string;
   fullName: string;
   programme: string;
   academicStatus: string;
+  photoDataUrl: string | null;
   verificationUrl: string;
 };
 
@@ -79,8 +81,14 @@ export default function StudentIdCard() {
               <Badge tone={id.academicStatus === "ACTIVE" ? "ok" : "warn"}>{id.academicStatus}</Badge>
             </div>
             <p className="mt-4 text-xs font-semibold uppercase tracking-wide text-gold-light">{COLLEGE_NAME} · Student ID</p>
-            <p className="mt-3 font-display text-xl">{id.fullName}</p>
-            <p className="mt-1 font-mono text-sm text-paper/70">{id.studentNumber}</p>
+            <div className="mt-3 flex items-center gap-4">
+              {id.photoDataUrl && (id.photoDataUrl.startsWith("data:image/") || /^https?:\/\//i.test(id.photoDataUrl)) && <img src={id.photoDataUrl} alt={`Portrait of ${id.fullName}`} className="h-20 w-16 rounded-sm object-cover" />}
+              <div>
+                <p className="font-display text-xl">{id.fullName}</p>
+                <p className="mt-1 font-mono text-sm text-paper/70">{id.studentNumber}</p>
+                <p className="mt-1 font-mono text-[10px] text-gold-light">Digital identity: {id.cardId}</p>
+              </div>
+            </div>
             <p className="mt-3 text-sm text-paper/80">{id.programme}</p>
           </div>
 

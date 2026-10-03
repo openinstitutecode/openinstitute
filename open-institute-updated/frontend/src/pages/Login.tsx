@@ -33,7 +33,11 @@ export default function Login() {
       }
       const data = await res.json();
       localStorage.setItem("kvbdtc_token", data.token);
-      const portalPath = role === "staff" ? "admin" : role;
+      if (data.mustChangePassword) {
+        window.location.href = "/change-password";
+        return;
+      }
+      const portalPath = data.role === "STUDENT" ? "student" : data.role === "TRAINER" ? "trainer" : data.role === "EMPLOYER" ? "employer" : "admin";
       window.location.href = `/${portalPath}/dashboard`;
     } catch (err) {
       // KFX-055 — the "Is the backend running?" hint was appended to EVERY error, including a plain

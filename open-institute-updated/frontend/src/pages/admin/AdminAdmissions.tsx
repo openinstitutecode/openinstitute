@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import PortalShell from "../../components/portal/PortalShell";
 import { PortalSection, Badge } from "../../components/portal/Primitives";
-import { apiFetch, ApiError, useCurrentUserName } from "../../lib/api";
+import { apiFetch, apiFetchBlob, openOrDownloadBlob, ApiError, useCurrentUserName } from "../../lib/api";
 import { LoadingState } from "../../components/portal/StateViews";
 
 const links = [
@@ -78,6 +78,7 @@ type ApplicationDocument = {
   verified: boolean;
   verifiedAt: string | null;
   uploadedAt: string;
+  admittedStudentNumber?: string;
 };
 
 type Application = {
@@ -134,13 +135,34 @@ export default function AdminAdmissions() {
         apps
           ? apps.map((a) =>
               a.id === applicationId
-                ? { ...a, documents: a.documents.map((d) => (d.id === docId ? updated : d)) }
+                ? {
+                    ...a,
+                    status: updated.admittedStudentNumber ? "ADMITTED" : a.status,
+                    documents: a.documents.map((d) => (d.id === docId ? updated : d)),
+                  }
                 : a
             )
           : apps
       );
+      if (updated.admittedStudentNumber) {
+        setError(`All required documents are verified. Student ${updated.admittedStudentNumber} has been admitted and activated.`);
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not update document verification.");
+    }
+
+  }
+
+  async function openDocument(document: ApplicationDocument) {
+    try {
+      if (document.fileUrl.startsWith("/api/")) {
+        const result = await apiFetchBlob(document.fileUrl.replace(/^\/api/, ""));
+        openOrDownloadBlob(result.blob, result.filename);
+      } else {
+        window.open(document.fileUrl, "_blank", "noopener,noreferrer");
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not open the document.");
     }
   }
 
@@ -190,6 +212,7 @@ export default function AdminAdmissions() {
                             {a.documents.map((d) => (
                               <li key={d.id} className="text-xs">
                                 <span className="text-ink/60">{d.category}</span>{" "}
+                                <button onClick={() => openDocument(d)} className="text-navy underline">View</button>{" "}
                                 <Badge tone={d.verified ? "ok" : "warn"}>{d.verified ? "Verified" : "Unverified"}</Badge>{" "}
                                 <button
                                   onClick={() => verifyDocument(a.id, d.id, !d.verified)}

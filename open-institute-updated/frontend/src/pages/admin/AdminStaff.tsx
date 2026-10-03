@@ -71,18 +71,29 @@ const links = [
 ];
 
 type Staff = {
-  id: string; fullName: string; department: string | null; title: string | null;
+  id: string; staffNumber: string | null; fullName: string; department: string | null; title: string | null; photoUrl?: string | null;
   contractType: string | null; user: { email: string; role: string; isActive: boolean };
 };
+
+const staffRoles = [
+  "BOARD_MEMBER", "PRINCIPAL", "DEPUTY_PRINCIPAL", "REGISTRAR", "FINANCE_OFFICER", "ACCOUNTANT",
+  "HR_OFFICER", "QA_OFFICER", "ICT_ADMIN", "LIBRARIAN", "ADMISSIONS_OFFICER", "EXAMINATION_OFFICER",
+  "DEPARTMENT_HEAD", "PROGRAMME_COORDINATOR", "TRAINER", "COUNSELLOR", "CAREER_OFFICER",
+  "ATTACHMENT_OFFICER", "EXTERNAL_EXAMINER", "AUDITOR", "REGULATORY_INSPECTOR",
+];
 
 export default function AdminStaff() {
   const userName = useCurrentUserName();
   const [staff, setStaff] = useState<Staff[] | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [userId, setUserId] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [role, setRole] = useState("TRAINER");
   const [fullName, setFullName] = useState("");
   const [department, setDepartment] = useState("");
   const [title, setTitle] = useState("");
+  const [photoDataUrl, setPhotoDataUrl] = useState("");
+  const [created, setCreated] = useState<{ staffNumber: string; emailStatus: string } | null>(null);
 
   function load() {
     apiFetch<Staff[]>("/staff").then(setStaff).catch((err) => setError(err instanceof Error ? err.message : "Could not load staff."));
@@ -92,9 +103,14 @@ export default function AdminStaff() {
   async function addStaff(e: FormEvent) {
     e.preventDefault();
     setError(null);
+    setCreated(null);
     try {
-      await apiFetch("/staff", { method: "POST", body: JSON.stringify({ userId, fullName, department: department || undefined, title: title || undefined }) });
-      setUserId(""); setFullName(""); setDepartment(""); setTitle("");
+      const result = await apiFetch<{ staffNumber: string; emailStatus: string }>("/staff", {
+        method: "POST",
+        body: JSON.stringify({ email, password, role, fullName, department: department || undefined, title: title || undefined, photoDataUrl: photoDataUrl || undefined }),
+      });
+      setCreated(result);
+      setEmail(""); setPassword(""); setFullName(""); setDepartment(""); setTitle(""); setPhotoDataUrl("");
       load();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not create staff profile.");
@@ -105,8 +121,7 @@ export default function AdminStaff() {
     <PortalShell role="Admin portal" links={links} userName={userName}>
       <h1 className="font-display text-2xl">Staff management</h1>
       <p className="mt-2 max-w-prose text-sm text-ink/60">
-        Employment details for staff — department, title, contract type —
-        distinct from the login/role management on Users & RBAC.
+        Create staff or trainer logins with role-scoped profiles. IDs are generated immediately. Email delivery is not configured.
       </p>
 
       {error && <p className="mt-4 text-sm text-navy-dark">{error}</p>}
@@ -117,22 +132,38 @@ export default function AdminStaff() {
             {staff?.map((s) => (
               <li key={s.id} className="py-2 text-sm">
                 <div className="flex items-center justify-between">
-                  <span>{s.fullName}</span>
+                  <span className="flex items-center gap-3">
+                    {s.photoUrl?.startsWith("data:image/") && <img src={s.photoUrl} alt="" className="h-9 w-9 rounded-full object-cover" />}
+                    {s.fullName}
+                  </span>
                   <Badge tone={s.user.isActive ? "ok" : "neutral"}>{s.user.role}</Badge>
                 </div>
-                <p className="text-xs text-ink/45">{s.title ?? "No title set"} · {s.department ?? "No department set"} · {s.user.email}</p>
+                <p className="text-xs text-ink/45">{s.staffNumber ?? "No staff ID"} · {s.title ?? "Staff"} · {s.department ?? "No department"} · {s.user.email}</p>
               </li>
             ))}
           </ul>
         </PortalSection>
 
-        <PortalSection title="Create a staff profile">
+        <PortalSection title="Create a staff or trainer account">
           <form onSubmit={addStaff} className="space-y-3">
-            <input value={userId} onChange={(e) => setUserId(e.target.value)} placeholder="User ID (existing login account)" className="input" />
-            <input value={fullName} onChange={(e) => setFullName(e.target.value)} placeholder="Full name" className="input" />
-            <input value={department} onChange={(e) => setDepartment(e.target.value)} placeholder="Department (optional)" className="input" />
-            <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Title (optional)" className="input" />
-            <button type="submit" className="btn-primary">Create profile</button>
+            <input required type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Work email" className="input" />
+            <input required type="password" minLength={10} value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Temporary password" className="input" autoComplete="new-password" />
+            <select value={role} onChange={(e) => setRole(e.target.value)} className="input">{staffRoles.map((item) => <option key={item} value={item}>{item.replace(/_/g, " ")}</option>)}</select>
+            <input required value={fullName} onChange={(e) => setFullName(e.target.value)} placeholder="Full name" className="input" />
+            <input value={department} onChange={(e) => setDepartment(e.target.value)} placeholder="Department" className="input" />
+            {role !== "TRAINER" && <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Job title" className="input" />}
+            <label className="block text-sm">Profile photo (PNG/JPEG)
+              <input type="file" accept="image/png,image/jpeg" className="input mt-1" onChange={(event) => {
+                const file = event.target.files?.[0];
+                if (!file) return setPhotoDataUrl("");
+                if (file.size > 300_000) { setError("Photo must be 300 KB or smaller."); event.target.value = ""; return; }
+                const reader = new FileReader();
+                reader.onload = () => setPhotoDataUrl(String(reader.result));
+                reader.readAsDataURL(file);
+              }} />
+            </label>
+            {created && <p role="status" className="text-sm text-forest">Created staff ID {created.staffNumber}. Email status: not configured; no email was sent.</p>}
+            <button type="submit" className="btn-primary">Create account and profile</button>
           </form>
         </PortalSection>
       </div>
