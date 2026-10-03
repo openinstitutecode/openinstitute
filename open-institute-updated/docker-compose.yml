@@ -50,6 +50,7 @@ services:
     depends_on: [backend]
     environment:
       API_UPSTREAM: backend:4000
+      API_UPSTREAM_SCHEME: http
     ports: ["127.0.0.1:${HTTP_PORT:-8080}:10000"]
 
 volumes:

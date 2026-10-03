@@ -1,17 +1,14 @@
 services:
-  - type: pserv
+  - type: web
     name: openinstitute-backend
     runtime: docker
     region: frankfurt
-    plan: 0.5c-512mb
+    plan: free
     rootDir: open-institute-updated/backend
-    dockerfilePath: open-institute-updated/backend/Dockerfile
-    dockerContext: open-institute-updated/backend
+    dockerfilePath: Dockerfile
+    dockerContext: .
     maxShutdownDelaySeconds: 120
-    disk:
-      name: uploads
-      mountPath: /app/uploads
-      sizeGB: 10
+    healthCheckPath: /api/ready
     envVars:
       - key: PORT
         value: "10000"
@@ -41,12 +38,14 @@ services:
     region: frankfurt
     plan: free
     rootDir: open-institute-updated/frontend
-    dockerfilePath: open-institute-updated/frontend/Dockerfile
-    dockerContext: open-institute-updated/frontend
+    dockerfilePath: Dockerfile
+    dockerContext: .
     healthCheckPath: /
     envVars:
       - key: API_UPSTREAM
         fromService:
-          type: pserv
+          type: web
           name: openinstitute-backend
-          property: hostport
+          envVarKey: RENDER_EXTERNAL_HOSTNAME
+      - key: API_UPSTREAM_SCHEME
+        value: https
