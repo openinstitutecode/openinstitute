@@ -1,0 +1,4495 @@
+// Measur Business College
+// Core relational schema. Extend per-module as those modules are built.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ---------------------------------------------------------------------------
+// IDENTITY & ACCESS
+// ---------------------------------------------------------------------------
+
+// Moodle integration — which engine delivers a given Course.
+// CUSTOM is the default so every existing course is unaffected.
+// Named LmsEngine (not "delivery mode") to avoid colliding in meaning
+// with Programme.deliveryMode, which is an unrelated online/blended/
+// in-person classification.
+enum LmsEngine {
+  CUSTOM
+  MOODLE
+}
+
+enum LiveClassStatus {
+  SCHEDULED
+  LIVE
+  ENDED
+  CANCELLED
+}
+
+enum Role {
+  SUPER_ADMIN
+  BOARD_MEMBER
+  PRINCIPAL
+  DEPUTY_PRINCIPAL
+  REGISTRAR
+  FINANCE_OFFICER
+  ACCOUNTANT
+  HR_OFFICER
+  QA_OFFICER
+  ICT_ADMIN
+  LIBRARIAN
+  ADMISSIONS_OFFICER
+  EXAMINATION_OFFICER
+  DEPARTMENT_HEAD
+  PROGRAMME_COORDINATOR
+  TRAINER
+  COUNSELLOR
+  CAREER_OFFICER
+  ATTACHMENT_OFFICER
+  STUDENT
+  APPLICANT
+  ALUMNUS
+  EXTERNAL_EXAMINER
+  EMPLOYER
+  AUDITOR
+  REGULATORY_INSPECTOR
+}
+
+model User {
+  id           String    @id @default(cuid())
+  accessibilityProfile AccessibilityProfile? // LMS039 (back-relation required by Prisma)
+  email        String    @unique
+  phone        String?   @unique
+  passwordHash String
+  role         Role
+  isActive     Boolean   @default(true)
+  mfaEnabled   Boolean   @default(false)
+  lastLoginAt  DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  // Moodle integration (additive) — null until this user's first
+  // interaction with a MOODLE-mode course triggers lazy account creation
+  moodleUserId Int?      @unique
+
+  student  Student?
+  trainer  Trainer?
+  staff    StaffProfile?
+  employer EmployerProfile?
+
+  auditLogs   AuditLog[]
+  passwordResetTokens PasswordResetToken[] // KFX-004
+  documents   Document[]
+  aiSessions  AiConversation[]
+  notifications Notification[]
+  ticketsRaised HelpdeskTicket[] @relation("TicketRaisedBy")
+  notificationPreference NotificationPreference? // Batch 69
+  dataRequests DataRequest[] // Batch 70
+  
+  // Batch 43 relations
+  tutorSessions     TutorSession[] @relation("TutorSessions")
+  simulationSessions SimulationSession[] @relation("SimulationSessionStudent")
+  simulationSessionsScored SimulationSession[] @relation("SimulationSessionScorer")
+  liveClassesHosted LiveClassSession[] @relation("LiveClassHost")
+  accessibilityPrefs UserAccessibilityPreferences?
+  creditTransfers   CreditTransferRequest[] @relation("CreditTransfers")
+  creditTransferReviews CreditTransferRequest[] @relation("CreditTransferReviews")
+  accreditationReviews AccreditationReview[] @relation("AccreditationReviews")
+
+  // Batch 44 relations (added Batch 45 — required by Prisma but missing
+  // from the schema Batch 44 shipped; see docs/progress-batch45.md)
+  semestersCreated      SemesterConfig[]        @relation("SemesterCreated")
+  learningAdaptations   LearningAdaptation[]    @relation("LearningAdaptations")
+  resultsExaminer1For   ResultsApprovalChain[]  @relation("ResultsExaminer1")
+  resultsExaminer2For   ResultsApprovalChain[]  @relation("ResultsExaminer2")
+  resultsQaOfficerFor   ResultsApprovalChain[]  @relation("ResultsQaOfficer")
+  aiFeedbackReviewed    AiFeedbackSession[]     @relation("AiFeedbackReview")
+  dataImportSessions    DataImportSession[]     @relation("DataImports")
+
+  // Batch 45
+  knowledgeBaseAuthored  KnowledgeBaseEntry[] @relation("KnowledgeBaseAuthored")
+  knowledgeBaseApproved  KnowledgeBaseEntry[] @relation("KnowledgeBaseApprovals")
+
+  // Batch 53 — RG029/RG030/RG036
+  examBoardRatificationsDone     ExamBoardRatification[]     @relation("ExamBoardRatifiedBy")
+  academicBoardRatificationsDone AcademicBoardRatification[] @relation("AcademicBoardRatifiedBy")
+  regulatoryReportsGenerated     RegulatoryReportBatch[]     @relation("RegulatoryReportsGenerated")
+
+  // Batch 64 — AI033 (AI viva human-confirmed scoring, same principle as
+  // SimulationSession.scoredBy)
+  aiVivaSessionsScored AiVivaSession[] @relation("AiVivaSessionScorer")
+}
+
+model StaffProfile {
+  id             String   @id @default(cuid())
+  userId         String   @unique
+  user           User     @relation(fields: [userId], references: [id])
+  fullName       String
+  department     String?
+  title          String?
+  nationalIdNo   String?  @unique
+  hireDate       DateTime?
+  contractType   String?
+  createdAt      DateTime @default(now())
+}
+
+// ---------------------------------------------------------------------------
+// APPLICANTS & ADMISSIONS
+// ---------------------------------------------------------------------------
+
+enum ApplicationStatus {
+  SUBMITTED
+  UNDER_REVIEW
+  ADMITTED
+  REJECTED
+  WAITLISTED
+  REGISTERED
+}
+
+model Application {
+  id            String            @id @default(cuid())
+  refNumber     String            @unique
+  fullName      String
+  email         String
+  phone         String
+  programmeId   String
+  programme     Programme         @relation(fields: [programmeId], references: [id])
+  studyMode     String
+  kcseIndex     String?
+  kcseGrade     String?
+  priorLearningClaim Boolean      @default(false)
+  status        ApplicationStatus @default(SUBMITTED)
+  documents     Document[]
+  reviewedById  String?
+  decisionNote  String?
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
+}
+
+// ---------------------------------------------------------------------------
+// STUDENTS
+// ---------------------------------------------------------------------------
+
+enum AcademicStatus {
+  ACTIVE
+  ON_LEAVE
+  SUSPENDED
+  WITHDRAWN
+  GRADUATED
+  EXCLUDED
+}
+
+model Student {
+  id              String         @id @default(cuid())
+  userId          String         @unique
+  user            User           @relation(fields: [userId], references: [id])
+  studentNumber   String         @unique
+  admissionNumber String         @unique
+  fullName        String
+  programmeId     String
+  programme       Programme      @relation(fields: [programmeId], references: [id])
+  intake          String
+  studyMode       String
+  academicStatus  AcademicStatus @default(ACTIVE)
+  emergencyContactName  String?
+  emergencyContactPhone String?
+  // EX014/Batch 64 — a student-supplied photo (base64 data URL, same
+  // client-side-encoded pattern AI009's PDF upload already uses — this
+  // backend has no multipart/binary storage). Used only for admit-card
+  // printing so an invigilator can check a face against a card by eye;
+  // never used for any automated biometric match, which stays out of
+  // scope for this platform (see EX014's note in feature-audit-400.md).
+  photoDataUrl    String?        @db.Text
+  createdAt       DateTime       @default(now())
+
+  enrollments     Enrollment[]
+  feeInvoices     Invoice[]
+  attachments     AttachmentPlacement[]
+  transcripts     Transcript[]
+  certificates    Certificate[]
+  helpdeskTickets HelpdeskTicket[]
+  integrityCases  IntegrityCase[]
+  clubMemberships ClubMembership[]
+  counsellingRequests CounsellingRequest[]
+  accommodationRequests AccommodationRequest[]
+  competencyRecords CompetencyRecord[]
+  internshipApplications InternshipApplication[]
+  appeals         Appeal[]
+  attendanceRecords AttendanceRecord[]
+  scholarships    Scholarship[]
+  badges          StudentBadge[]
+  interventionNotes InterventionNote[]
+  academicRecordChanges AcademicRecordChange[]
+  microcredentials StudentMicrocredential[]
+  evidenceSubmissions CompetencyEvidence[]
+  portfolioItems  PortfolioItem[]
+  generatedLetters GeneratedLetter[]
+  financialHolds  FinancialHold[]
+  graduationClearances GraduationClearance[]
+  courseCertificates CourseCertificate[]
+
+  // SP017 — per-lesson completion tracking
+  lessonProgress  LessonProgress[]
+
+  // Batch 53 — RG030
+  academicBoardRatifications AcademicBoardRatification[]
+
+  // Batch 58 — LMS022, LMS029
+  scormAttempts   ScormAttempt[]
+  lessonTimeLogs  LessonTimeLog[]
+
+  // Batch 64 — AI033 (AI viva) and EX014 (admit cards)
+  aiVivaSessions  AiVivaSession[]
+  examAdmitCards  ExamAdmitCard[]
+
+  // Batch 65 — VBI001/018: Virtual Business Lab integration (additive)
+  labMapping      IntegrationStudentMapping?
+  labResults      VirtualLabAssessmentResult[]
+  labActivities   VirtualLabActivity[] // Batch 66 — VBI036
+}
+
+// ---------------------------------------------------------------------------
+// PROGRAMMES, UNITS, CURRICULUM
+// ---------------------------------------------------------------------------
+
+model Programme {
+  id                String   @id @default(cuid())
+  slug              String   @unique
+  name              String
+  qualificationLevel String  // e.g. "TVET Level 5 Certificate"
+  durationSemesters Int
+  deliveryMode      String
+  requiresAttachment Boolean @default(false)
+  approvalStatus    String   @default("pending") // pending | accredited | withdrawn
+  version           Int      @default(1)
+  // Batch 66 — the programme's official KUCCPS code, once KUCCPS assigns one. Used by the intake
+  // export instead of the internal slug (see routes/kuccps.ts). Null = not assigned yet.
+  kuccpsCode        String?
+  createdAt         DateTime @default(now())
+
+  units Unit[]
+  applications Application[]
+  students     Student[]
+  competencies Competency[]
+  rplApplications RplApplication[]
+  feeStructureItems FeeStructureItem[]
+  awardingBodyId String?
+  awardingBody   AwardingBody? @relation(fields: [awardingBodyId], references: [id])
+  expenses       Expense[]
+  programmeReviews ProgrammeReview[]
+  progressionRule ProgressionRule?
+  examBlueprints  ExamBlueprint[]
+  semesterConfigs SemesterConfig[] @relation("SemesterConfigs") // Batch 44: semester CRUD
+  
+  // Batch 43
+  accreditationReviews AccreditationReview[] @relation("AccreditationReviews")
+
+  // LMS021
+  learningPaths LearningPath[]
+}
+
+// RG015 — progression rules: the pass-mark / standing thresholds a
+// registrar can actually configure per programme, instead of a single
+// hardcoded 60%/50% split baked into the standing computation. A
+// programme with no row here still gets a sensible default (see
+// registry.ts), so this is additive, not a breaking requirement.
+model ProgressionRule {
+  id                       String    @id @default(cuid())
+  programmeId              String    @unique
+  programme                Programme @relation(fields: [programmeId], references: [id])
+  goodStandingMinAverage   Float     @default(60)
+  warningMinAverage        Float     @default(50)
+  maxFailedUnitsForGood    Int       @default(0)
+  maxFailedUnitsForWarning Int       @default(1)
+  updatedAt                DateTime  @updatedAt
+  updatedById              String?
+}
+
+// RG017 — graduation clearance: computeEligibility() in graduation.ts is
+// deliberately always live (so it can never drift from the real data),
+// but a registrar formally *issuing* clearance is a distinct, real event
+// that should leave its own permanent record — separate from re-running
+// the audit again next week. A clearance is only ever created for a
+// student who was actually eligible/conditionally-eligible at that
+// moment; it is never edited afterward, only superseded by a later one.
+model GraduationClearance {
+  id              String   @id @default(cuid())
+  studentId       String
+  student         Student  @relation(fields: [studentId], references: [id])
+  issuedAt        DateTime @default(now())
+  issuedById      String
+  eligibilityTier String   // eligible | conditionally_eligible
+  snapshot        Json     // the computeEligibility() result at the moment of issuance
+}
+
+model Unit {
+  id             String   @id @default(cuid())
+  programmeId    String
+  programme      Programme @relation(fields: [programmeId], references: [id])
+  code           String
+  title          String
+  semester       Int
+  creditHours    Int      @default(3)
+  learningOutcomes String[] // legacy text array, kept for compatibility
+
+  // LMS020 — prerequisite rules: unit IDs (within the same programme) that
+  // must already be completed (Enrollment.status = "completed") before a
+  // student can register for this unit. Empty means no prerequisite.
+  // Enforced server-side in POST /me/register-unit and the registrar's
+  // administrative POST /registry/course-registration — not just a UI hint.
+  prerequisiteUnitIds String[] @default([])
+
+  courses                Course[]
+  enrollments            Enrollment[]
+  questions              Question[]
+  notebookEntries        NotebookEntry[]
+  formalLearningOutcomes LearningOutcome[] // EX004: formal outcome models
+  
+  // Batch 43
+  creditTransferRequests CreditTransferRequest[]
+
+  // Batch 44 (added Batch 45 — see docs/progress-batch45.md)
+  learningAdaptations    LearningAdaptation[] @relation("UnitLearningAdaptations")
+
+  // Batch 45
+  knowledgeBaseEntries   KnowledgeBaseEntry[]
+
+  // Batch 63 (AI008–012)
+  knowledgeSources       KnowledgeSource[]
+
+  // TP009 — competency mapping: which competencies this unit's curriculum builds
+  unitCompetencies       UnitCompetency[]
+
+  // LMS021
+  learningPathSteps LearningPathStep[]
+
+  // Batch 65 — VBI003: Virtual Business Lab integration (additive). Default
+  // keeps every existing unit exactly as it behaves today — a unit only
+  // gains a Lab presence once an admin sets vblEnabled and a course mapping.
+  vblEnabled     Boolean   @default(false)
+  vblSyncedAt    DateTime?
+  labMapping     IntegrationCourseMapping?
+  labResults     VirtualLabAssessmentResult[]
+  labActivities  VirtualLabActivity[] // Batch 66 — VBI036
+  labGradebookMapping     IntegrationGradebookMapping?
+  labCompetencyMappings   IntegrationCompetencyMapping[]
+
+  @@unique([programmeId, code])
+}
+
+model Course {
+  id          String   @id @default(cuid())
+  unitId      String
+  unit        Unit     @relation(fields: [unitId], references: [id])
+  trainerId   String?
+  trainer     Trainer? @relation(fields: [trainerId], references: [id])
+  title       String
+  description String?
+  publishedAt DateTime?
+
+  // Moodle integration (additive — default keeps every existing course
+  // exactly as it behaves today; nothing here changes existing rows)
+  lmsEngine      LmsEngine @default(CUSTOM)
+  moodleCourseId Int?      // Moodle's course id, set only when lmsEngine = MOODLE
+  moodleSyncedAt DateTime?    // last successful sync timestamp, for diagnostics
+
+  modules              CourseModule[]
+  assignments          Assignment[]
+  assessments          Assessment[]
+  attendanceRecords    AttendanceRecord[]
+  timetableEntries     TimetableEntry[]
+  forums               Forum[]
+  feedback             CourseFeedback[]
+  studyGroups          StudyGroup[]
+  certificates         CourseCertificate[]
+  announcements        CourseAnnouncement[]
+  catalogueEntry       CourseCatalogueEntry?
+  deliveryPlan         CourseDeliveryPlan?
+
+  // TP026 — live teaching (BigBlueButton-backed sessions for CUSTOM-engine courses)
+  liveClasses          LiveClassSession[]
+
+  // Batch 53 — RG029
+  examBoardRatifications ExamBoardRatification[]
+
+  // QA014 — course approval
+  approvals CourseApproval[]
+
+  // LMS019 — completion rules
+  completionRule CourseCompletionRule?
+}
+
+model CourseModule {
+  id       String  @id @default(cuid())
+  courseId String
+  course   Course  @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  title    String
+  order    Int
+  lessons  Lesson[]
+}
+
+model Lesson {
+  id             String   @id @default(cuid())
+  moduleId       String
+  module         CourseModule @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+  title          String
+  order          Int
+  contentType    String   // video | reading | interactive | scorm
+  contentUrl     String?
+  contentBody    String?
+  durationMins   Int?
+  outcomesCovered String[] @default([]) // subset of the unit's learningOutcomes this lesson addresses
+
+  // TP006 — visual lesson builder. `blocks` is the ordered, typed block list
+  // the builder edits (heading/text/image/video/audio/file/callout/code/
+  // link/divider — see lib/lesson-blocks.ts for the exact shape and the
+  // validation). `contentBody` is still always populated: it's derived from
+  // the blocks as markdown on every save, so anything that reads contentBody
+  // (AI tutor grounding, exports, older screens) keeps working unchanged.
+  blocks         Json?
+  // TP007 — a draft lesson is visible to its trainer only. Defaults to true
+  // so every lesson that existed before this field keeps being visible.
+  isPublished    Boolean  @default(true)
+  // TP007 — the lesson's primary media (uploaded video/audio/document),
+  // separate from external `contentUrl` links.
+  mediaAssetId   String?
+  mediaAsset     MediaAsset? @relation(fields: [mediaAssetId], references: [id], onDelete: SetNull)
+  reviewDueDate  DateTime?
+  lastReviewedAt DateTime?
+
+  // LMS037 (Batch 45) — content approval: a substantive edit (contentBody
+  // or contentUrl) puts the lesson in PENDING_REVIEW while the previously
+  // approved version stays live and visible to students (see LessonVersion);
+  // a QA officer or programme coordinator then approves or rejects it.
+  approvalStatus String   @default("approved") // approved | pending_review | rejected
+  approvedById   String?
+  approvedAt     DateTime?
+
+  // LMS007 — content library: free-text keywords so the cross-course
+  // library search (GET /content/library) can find a lesson by topic
+  // rather than only by browsing its course.
+  tags           String[] @default([])
+  // LMS024 — offline content: the trainer marks a lesson as safe to cache
+  // for offline reading (e.g. it has no live/interactive dependency). The
+  // frontend service worker only pre-caches lessons with this set.
+  offlineAvailable Boolean @default(false)
+
+  // Batch 77 — LMS content extras
+  publishAt      DateTime?                        // CNT030 scheduled publishing (flips isPublished when due)
+  category       String?                          // CNT054
+  lastNotifiedAt DateTime?                        // CNT044
+
+  versions LessonVersion[]
+  // SP017 — one row per student who has marked this lesson complete
+  progress LessonProgress[]
+  // LMS022 — set when contentType = "scorm"
+  scormPackage ScormPackage?
+  // LMS029 — per-student time-on-task samples for this lesson
+  timeLogs LessonTimeLog[]
+
+  @@index([approvalStatus])
+  @@index([moduleId])
+}
+
+// TP007 — an uploaded file (video, audio, image, document) stored on the
+// backend's upload volume. Bytes live on disk under UPLOAD_DIR/<storageKey>;
+// this row is the metadata + ownership record. Served only through signed,
+// expiring URLs (see routes/media.ts) — never a public static directory.
+model MediaAsset {
+  id           String   @id @default(cuid())
+  ownerUserId  String
+  courseId     String?
+  originalName String
+  mimeType     String
+  kind         String   // video | audio | image | document | archive
+  sizeBytes    Int
+  storageKey   String   @unique
+  sha256       String?
+  createdAt    DateTime @default(now())
+
+  lessons Lesson[]
+
+  @@index([ownerUserId])
+  @@index([courseId])
+}
+
+// SP017 — Learning progress: real per-lesson completion, rolled up into
+// per-module and per-course percentages. Previously the "Course content"
+// screen had no notion of completion at all — every module always looked
+// 0% regardless of what the student had actually been through.
+model LessonProgress {
+  id          String   @id @default(cuid())
+  studentId   String
+  student     Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  lessonId    String
+  lesson      Lesson   @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  completedAt DateTime @default(now())
+
+  @@unique([studentId, lessonId])
+  @@index([studentId])
+  @@index([lessonId])
+}
+
+// TP005 — content versioning at the actual content level (Lesson), not
+// just the programme-level curriculum version bump that already existed.
+// Every edit to contentBody/contentUrl is snapshotted here before the
+// live Lesson row changes, so the real prior wording stays inspectable.
+model LessonVersion {
+  id            String   @id @default(cuid())
+  lessonId      String
+  lesson        Lesson   @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  contentBody   String?
+  contentUrl    String?
+  // TP006/TP007 — blocks and primary media are part of a lesson's content
+  // now, so a snapshot must carry them or "restore" would silently lose them.
+  blocks        Json?
+  mediaAssetId  String?
+  // Was the content in this snapshot approved (not a still-pending edit)?
+  // Rejecting an edit, and what students see while an edit is pending,
+  // both need "the last APPROVED content", not just "the previous edit".
+  wasApproved   Boolean  @default(true)
+  editedById    String
+  editedAt      DateTime @default(now())
+
+  @@index([lessonId])
+}
+
+// LMS036 — Course-level certificates: distinct from institution-wide
+// qualification certificates (which already exist); issued when a student
+// completes a course with a passing grade
+model CourseCertificate {
+  id            String   @id @default(cuid())
+  courseId      String
+  course        Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  studentId     String
+  student       Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  grade         String?  // the course grade
+  certificateCode String?
+  issuedAt      DateTime @default(now())
+  revoked       Boolean  @default(false)
+  revokedAt     DateTime?
+  
+  @@unique([courseId, studentId])
+}
+
+// LMS015 — Course-level announcements: scoped to specific courses,
+// distinct from institution-wide announcements (Notification)
+model CourseAnnouncement {
+  id            String   @id @default(cuid())
+  courseId      String
+  course        Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  trainerId     String
+  trainer       Trainer  @relation(fields: [trainerId], references: [id])
+  title         String
+  content       String
+  importance    String   @default("normal") // low | normal | high | urgent
+  pinnedUntil   DateTime? // Batch 45 — auto-unpin after this date
+  scheduledAt   DateTime?
+  sentAt        DateTime?
+  status        String   @default("SENT") // SENT | SCHEDULED | CANCELLED
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([courseId])
+  @@index([pinnedUntil])
+  @@index([status, scheduledAt])
+}
+
+// LMS001 — Course catalogue enhancement: formal visibility/listing metadata
+model CourseCatalogueEntry {
+  id            String   @id @default(cuid())
+  courseId      String   @unique
+  course        Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  isVisible     Boolean  @default(true) // can students browse it?
+  shortCode     String?  // e.g., CS101
+  credits       Int?
+  level         String?  // foundation | intermediate | advanced
+  prerequisites String[] @default([]) // course IDs
+  keywords      String[] @default([])
+  catalogueUpdatedAt DateTime @default(now())
+}
+
+// LMS032 — peer learning: real student-formed study groups tied to a
+// course, distinct from LMS033's peer ASSESSMENT (PeerReview, already
+// built) — this is collaborative study, not grading.
+model StudyGroup {
+  id        String   @id @default(cuid())
+  courseId  String
+  course    Course   @relation(fields: [courseId], references: [id])
+  name      String
+  createdById String
+  createdAt DateTime @default(now())
+
+  members StudyGroupMembership[]
+  posts   StudyGroupPost[]
+}
+
+model StudyGroupMembership {
+  id          String     @id @default(cuid())
+  groupId     String
+  group       StudyGroup @relation(fields: [groupId], references: [id])
+  userId      String
+  joinedAt    DateTime   @default(now())
+
+  @@unique([groupId, userId])
+}
+
+model StudyGroupPost {
+  id        String     @id @default(cuid())
+  groupId   String
+  group     StudyGroup @relation(fields: [groupId], references: [id])
+  authorId  String
+  body      String
+  postedAt  DateTime   @default(now())
+}
+
+// AD030 — security centre: a real record of every failed login, not a
+// cosmetic "security score." Written directly in the login handler.
+model FailedLoginAttempt {
+  id          String   @id @default(cuid())
+  email       String
+  ipAddress   String?
+  reason      String   // no_such_user | inactive_user | wrong_password | locked
+  attemptedAt DateTime @default(now())
+
+  @@index([email, attemptedAt]) // KPERF-003 — lockout check runs on every login
+  @@index([ipAddress, attemptedAt])
+}
+
+// AD032 — API management: real issued keys for external integrations,
+// with real usage tracking, not a static claim of "API access available."
+model ApiKey {
+  id          String    @id @default(cuid())
+  label       String
+  keyHash     String    @unique
+  createdById String
+  createdAt   DateTime  @default(now())
+  revokedAt   DateTime?
+  lastUsedAt  DateTime?
+}
+
+// AD035/036 — report builder + "scheduled" reports. Honest about AD036:
+// this sandbox has no cron/scheduler (same limitation as FN020's
+// reminders), so a subscription here only records the intent (who wants
+// what, how often) — it is never claimed to fire automatically. An
+// admin still has to press "run now," same pattern as the reminders tool.
+model SavedReport {
+  id          String   @id @default(cuid())
+  name        String
+  entity      String   // students | finance | compliance | research
+  filters     Json?
+  createdById String
+  createdAt   DateTime @default(now())
+
+  subscriptions ScheduledReportSubscription[]
+}
+
+model ScheduledReportSubscription {
+  id            String      @id @default(cuid())
+  reportId      String
+  report        SavedReport @relation(fields: [reportId], references: [id])
+  recipientId   String
+  frequency     String      // daily | weekly | monthly — recorded intent only, nothing fires this automatically
+  createdAt     DateTime    @default(now())
+  lastRunAt     DateTime?
+}
+
+// LB032 — startup incubation: a real cohort/stage record tied to a
+// ResearchProject of type "startup".
+model IncubationRecord {
+  id          String   @id @default(cuid())
+  projectId   String
+  project     ResearchProject @relation(fields: [projectId], references: [id])
+  cohort      String?
+  stage       String   @default("idea") // idea | mvp | growth
+  joinedAt    DateTime @default(now())
+}
+
+// LB033 — mentorship: real assignments with a start/status, distinct
+// from IncubationRecord's single mentor-stage snapshot — a project can
+// have a history of mentors over time.
+model Mentorship {
+  id          String    @id @default(cuid())
+  projectId   String
+  project     ResearchProject @relation(fields: [projectId], references: [id])
+  mentorUserId String
+  focusArea   String?
+  startedAt   DateTime  @default(now())
+  endedAt     DateTime?
+  status      String    @default("active") // active | completed
+}
+
+// ---------------------------------------------------------------------------
+// TRAINERS
+// ---------------------------------------------------------------------------
+
+model Trainer {
+  id                 String   @id @default(cuid())
+  userId             String   @unique
+  user               User     @relation(fields: [userId], references: [id])
+  fullName           String
+  tvetaLicenceNumber String?
+  licenceExpiry      DateTime?
+  qualifications     String[]
+  department         String?
+
+  // TP039 — TVETA credential profile. The licence number/expiry fields
+  // above already existed and were shown read-only in AdminTrainers; there
+  // was no way to actually record that someone checked the licence against
+  // TVETA and confirmed it real, nor to attach the scanned certificate
+  // itself. Deliberately mirrors the Lesson content-approval pattern
+  // (approvedById/approvedAt) rather than inventing a new shape.
+  licenceVerified     Boolean   @default(false)
+  licenceVerifiedAt   DateTime?
+  licenceVerifiedById String?
+  licenceDocumentUrl  String?
+
+  // QA011 — trainer compliance beyond the licence: the other three things
+  // an inspection actually checks per trainer, recorded the same
+  // verified-by/verified-at way as the licence fields above rather than
+  // a bare boolean nobody can trace back to who confirmed it.
+  codeOfConductSignedAt    DateTime?
+  inductionCompletedAt     DateTime?
+  backgroundCheckClearedAt DateTime?
+  backgroundCheckClearedById String?
+
+  courses Course[]
+  cpdActivities CpdActivity[]
+  interventionNotes InterventionNote[]
+  researchSupervised ResearchProject[]
+  courseAnnouncements CourseAnnouncement[]
+
+  // Batch 65 — VBI002: Virtual Business Lab integration (additive)
+  labMapping IntegrationStaffMapping?
+}
+
+// ---------------------------------------------------------------------------
+// ENROLLMENT, ASSESSMENT, GRADES
+// ---------------------------------------------------------------------------
+
+model Enrollment {
+  id         String   @id @default(cuid())
+  studentId  String
+  student    Student  @relation(fields: [studentId], references: [id])
+  unitId     String
+  unit       Unit     @relation(fields: [unitId], references: [id])
+  semester   String
+  status     String   @default("in_progress") // in_progress | completed | failed | withdrawn
+  finalGrade String?
+  createdAt  DateTime @default(now())
+
+  // Deprecated: Moodle does not expose an enrolment id through the
+  // enrolment API currently used by this integration. Kept for migration
+  // compatibility; new synchronizations do not populate this field.
+  moodleEnrolmentId Int?
+
+  // Batch 65 — VBI004: set once this enrollment has been synchronized to
+  // the Virtual Business Lab (only attempted when Unit.vblEnabled is true).
+  vblSyncedAt DateTime?
+
+  @@unique([studentId, unitId, semester])
+}
+
+model Question {
+  id                String   @id @default(cuid())
+  unitId            String
+  unit              Unit     @relation(fields: [unitId], references: [id])
+  type              String   // mcq | short_answer | essay
+  prompt            String
+  options           String[] // for mcq
+  correctAnswer     String?
+  marks             Int      @default(1)
+  difficulty        String   @default("medium") // easy | medium | hard
+  topic             String?
+  competencyId      String?
+  competency        Competency? @relation(fields: [competencyId], references: [id])
+  learningOutcomeId String?
+  learningOutcome   LearningOutcome? @relation(fields: [learningOutcomeId], references: [id], onDelete: SetNull)
+  approvedById      String?
+  // TP011 — shown to the student after a quiz attempt when the quiz allows
+  // feedback (why the right answer is right).
+  explanation       String?
+  createdById       String?
+  createdAt         DateTime @default(now())
+  responses         QuestionResponse[]
+  assessmentLinks   AssessmentQuestion[]
+
+  // Batch 76 — quiz engine v2 (LMS-QZ-006…080). `type` now also accepts
+  // mcq_multi | fill_blank | numerical | matching | ordering | case_study |
+  // scenario | practical (see lib/quiz-engine.ts). `config` holds the
+  // type-specific answer key and marking policy; null on every older row, which
+  // keeps scoring byte-identical for them.
+  config            Json?
+  mediaUrl          String?   // QZ016-018 image / audio / video attached to the question
+  mediaKind         String?   // image | audio | video
+  tags              String[]  @default([])
+  version           Int       @default(1)
+  archivedAt        DateTime? // soft delete: archived questions leave the bank but stay on old quizzes
+  updatedAt         DateTime  @default(now())
+  versions          QuestionVersion[]
+  reports           QuestionReport[]
+}
+
+// QZ040 — every edit snapshots the question first, so earlier wording and
+// keys stay inspectable and restorable.
+model QuestionVersion {
+  id         String   @id @default(cuid())
+  questionId String
+  question   Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  version    Int
+  snapshot   Json
+  editedById String
+  editedAt   DateTime @default(now())
+
+  @@unique([questionId, version])
+  @@index([questionId])
+}
+
+// QZ078 — a student (or trainer) flags a question as wrong/unclear/ambiguous.
+model QuestionReport {
+  id             String   @id @default(cuid())
+  questionId     String
+  question       Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  assessmentId   String?
+  reporterUserId String
+  category       String   @default("error") // error | unclear | ambiguous | typo | other
+  message        String
+  status         String   @default("open") // open | resolved | dismissed
+  resolution     String?
+  resolvedById   String?
+  resolvedAt     DateTime?
+  createdAt      DateTime @default(now())
+
+  @@index([questionId])
+  @@index([assessmentId])
+  @@index([status])
+}
+
+// QZ060 — in-progress answers, saved as the student works, so a refresh,
+// dropped connection or expired tab never loses them.
+model QuizAttemptDraft {
+  id            String   @id @default(cuid())
+  assessmentId  String
+  studentUserId String
+  answers       Json     // { [questionId]: answerString }
+  flagged       String[] @default([]) // QZ058 questions the student marked for review
+  currentIndex  Int      @default(0)
+  updatedAt     DateTime @updatedAt
+
+  @@unique([assessmentId, studentUserId])
+}
+
+// QZ080 — per-student approved extension on one quiz (extra attempts and/or a
+// later closing time). Separate from ExamAccommodation (extra minutes), which
+// continues to work as before.
+model QuizExtension {
+  id              String   @id @default(cuid())
+  assessmentId    String
+  studentUserId   String
+  extraAttempts   Int      @default(0)
+  extendedCloseAt DateTime?
+  reason          String
+  grantedById     String
+  createdAt       DateTime @default(now())
+  revokedAt       DateTime?
+
+  @@unique([assessmentId, studentUserId])
+  @@index([assessmentId])
+}
+
+enum AssessmentType {
+  FORMATIVE_QUIZ
+  ASSIGNMENT
+  CAT
+  FINAL_EXAM
+  PRACTICAL
+}
+
+model Assessment {
+  id           String         @id @default(cuid())
+  courseId     String
+  course       Course         @relation(fields: [courseId], references: [id])
+  blueprintId  String?
+  blueprint    ExamBlueprint? @relation(fields: [blueprintId], references: [id], onDelete: SetNull)
+  title        String
+  type         AssessmentType
+  builderType  String         @default("GENERIC") // GENERIC | QUIZ | EXAMINATION | ASSIGNMENT (Batch 44)
+  totalMarks   Int
+  requiresHumanModeration Boolean @default(true)
+  scheduledAt  DateTime?
+  durationMinutes Int?
+  maxAttempts  Int      @default(1)
+
+  // TP011 — quiz builder settings. All defaults preserve the behaviour every
+  // pre-existing assessment already had (visible, unshuffled, no pass mark).
+  instructions            String?
+  isDraft                 Boolean  @default(false)  // builder-created quizzes start as drafts
+  shuffleQuestions        Boolean  @default(false)
+  passMarkPercent         Int?
+  showFeedbackAfterSubmit Boolean  @default(true)
+  questionLinks           AssessmentQuestion[]
+
+  // Batch 76 — quiz engine v2. All defaults reproduce earlier behaviour.
+  opensAt            DateTime?            // QZ047 (falls back to scheduledAt for non-formative)
+  closesAt           DateTime?            // QZ048
+  gradingMethod      String   @default("HIGHEST") // QZ051-053 HIGHEST | AVERAGE | LATEST | FIRST
+  questionsPerPage   Int?                 // QZ056/057 (1 = one at a time)
+  navigationMode     String   @default("FREE")    // QZ058 FREE | FORWARD_ONLY
+  markingMode        String   @default("IMMEDIATE") // QZ063/064 IMMEDIATE | DEFERRED
+  resultVisibility   String   @default("IMMEDIATE") // QZ071 IMMEDIATE | AFTER_CLOSE | ON_RELEASE | HIDDEN
+  answerKeyReleaseAt DateTime?            // QZ070
+  allowedIntakes     String[] @default([]) // QZ079 empty = everyone enrolled
+  randomRules        Json?                // QZ035 [{count, topic?, difficulty?}]
+  shuffleOptions     Boolean?             // QZ036 null = follow shuffleQuestions (old behaviour)
+  retakeCooldownMins Int      @default(0) // QZ050 minimum wait between attempts
+  resultsPublished Boolean @default(false)
+  resultsPublishedAt DateTime?
+  resultsSubmittedForApprovalAt DateTime?
+  resultsSubmittedById String?
+  resultsApprovedAt DateTime?
+  resultsApprovedById String?
+  resultsApprovalNote String?
+  submissions  Submission[]
+  rubric       Rubric?
+  incidents    ExamIncident[]
+  sessions     ExamSession[]
+  oralSessions OralAssessmentSession[]
+  externalModerationReviews ExternalModerationReview[]
+  resultsApprovals ResultsApprovalChain[] @relation("ResultsApprovals")  // Batch 44: multi-stage approval
+  
+  // Batch 43
+  similarityChecks SimilarityCheck[]
+  // Batch 56
+  accommodations ExamAccommodation[]
+  practicalChecklist PracticalChecklist?
+
+  // Batch 64 — EX014 (candidate admit cards) and AI033 (AI viva, when tied
+  // to a specific oral assessment rather than free practice)
+  admitCards     ExamAdmitCard[]
+  aiVivaSessions AiVivaSession[]
+
+  // Batch 65 — VBI025: reverse side of IntegrationGradebookMapping.assessmentId
+  vblGradebookMappings IntegrationGradebookMapping[]
+}
+
+// TP011 — the explicit, ordered question list of one quiz. Before this, a
+// sitting's question pool was resolved dynamically as "every approved
+// question in the unit", so a trainer could not choose which questions a
+// specific quiz contained, nor give one question different marks in
+// different quizzes. When an Assessment has no rows here it still falls back
+// to that unit-wide pool, so existing exams behave exactly as before.
+model AssessmentQuestion {
+  id           String     @id @default(cuid())
+  assessmentId String
+  assessment   Assessment @relation(fields: [assessmentId], references: [id], onDelete: Cascade)
+  questionId   String
+  question     Question   @relation(fields: [questionId], references: [id])
+  order        Int
+  marks        Int?       // overrides Question.marks for this quiz only
+
+  @@unique([assessmentId, questionId])
+  @@index([assessmentId])
+}
+
+// EX035 — oral assessment / viva: a human-conducted session recorded for
+// real, not an AI-graded interaction (that would be AI033, which needs
+// real speech infrastructure this system doesn't have and correctly
+// remains unbuilt).
+model OralAssessmentSession {
+  id            String   @id @default(cuid())
+  assessmentId  String
+  assessment    Assessment @relation(fields: [assessmentId], references: [id])
+  studentUserId String
+  examinerId    String
+  score         Float?
+  notes         String?
+  recordedAt    DateTime @default(now())
+}
+
+// TP030 — student messaging: real, private, one-to-one messages between a
+// trainer and a student. Deliberately separate from the institution-wide
+// Notification broadcast (AD013) and from public DiscussionForum posts —
+// this is direct correspondence, readable only by its two participants.
+model DirectMessage {
+  id           String   @id @default(cuid())
+  senderId     String
+  recipientId  String
+  body         String
+  sentAt       DateTime @default(now())
+  readAt       DateTime?
+}
+
+// TP028 — virtual office hours: real published availability a student can
+// see, not a static claim of "available Tuesdays."
+model OfficeHourSlot {
+  id         String   @id @default(cuid())
+  trainerId  String
+  dayOfWeek  Int      // 0=Sunday .. 6=Saturday
+  startTime  String   // "HH:MM"
+  endTime    String
+  link       String?
+  active     Boolean  @default(true)
+  createdAt  DateTime @default(now())
+}
+
+model Assignment {
+  id          String   @id @default(cuid())
+  courseId    String
+  course      Course   @relation(fields: [courseId], references: [id])
+  title       String
+  instructions String
+  dueAt       DateTime
+  totalMarks  Int
+  submissions Submission[]
+
+  // Batch 77 — assignments v2 (LMS-ASG-001…040). Every default reproduces the
+  // behaviour assignments already had (published, individual, text+files, one
+  // submission, no late window, grades visible as soon as they are entered).
+  createdById        String?
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @default(now()) @updatedAt
+  status             String   @default("PUBLISHED") // DRAFT | PUBLISHED | ARCHIVED   ASG005/040
+  releaseAt          DateTime?                       // ASG005 scheduled release
+  archivedAt         DateTime?                       // ASG040
+  category           String   @default("ASSIGNMENT") // ASSIGNMENT | PRACTICAL | PROJECT | CAT  (GRD005)
+  weightPercent      Float    @default(0)            // GRD008/009 share of the course grade (0 = unweighted)
+  mode               String   @default("INDIVIDUAL") // INDIVIDUAL | GROUP     ASG006/007
+  maxGroupSize       Int      @default(5)
+  allowText          Boolean  @default(true)         // ASG008
+  allowFiles         Boolean  @default(true)         // ASG009
+  maxFiles           Int      @default(5)            // ASG010
+  maxFileMb          Int      @default(20)
+  allowedKinds       String[] @default([])           // ASG011-016: pdf word excel powerpoint audio video image archive text; empty = any allowed type
+  requireEvidence    Boolean  @default(false)        // ASG016 practical evidence must be attached
+  lateMode           String   @default("NONE")       // NONE | PENALTY | ACCEPT       ASG019
+  cutoffAt           DateTime?                       // hard stop for late work
+  latePenaltyPctPerDay Float  @default(10)
+  latePenaltyMaxPct  Float    @default(50)
+  maxResubmissions   Int      @default(0)            // ASG023
+  rubricCriteria     Json?                           // ASG028 [{ name, description, maxMarks }]
+  competencyBased    Boolean  @default(false)        // ASG029 COMPETENT / NOT_YET_COMPETENT
+  competencyId       String?
+  holdGrades         Boolean  @default(false)        // ASG037 true = grades hidden until released
+  gradesReleasedAt   DateTime?
+  requireModeration  Boolean  @default(false)        // ASG035
+  moderationSamplePct Int     @default(0)
+  checkSimilarity    Boolean  @default(false)        // ASG039
+  confirmationNote   String?                         // ASG018 text added to the receipt
+  reminderSentAt     DateTime?
+
+  groups      AssignmentGroup[]
+  extensions  AssignmentExtension[]
+
+  @@index([courseId])
+  @@index([status])
+}
+
+// ASG006/007 — a working group for a GROUP assignment. One group submission
+// is made per group; every member sees it and shares its grade.
+model AssignmentGroup {
+  id           String   @id @default(cuid())
+  assignmentId String
+  assignment   Assignment @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
+  name         String
+  createdById  String
+  createdAt    DateTime @default(now())
+  members      AssignmentGroupMember[]
+
+  @@index([assignmentId])
+}
+
+model AssignmentGroupMember {
+  id            String   @id @default(cuid())
+  groupId       String
+  group         AssignmentGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  assignmentId  String
+  studentUserId String
+  joinedAt      DateTime @default(now())
+
+  @@unique([assignmentId, studentUserId])
+  @@index([groupId])
+}
+
+// ASG021/022 — a student asks for more time; the course trainer decides.
+model AssignmentExtension {
+  id            String   @id @default(cuid())
+  assignmentId  String
+  assignment    Assignment @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
+  studentUserId String
+  requestedDueAt DateTime
+  reason        String
+  status        String   @default("REQUESTED") // REQUESTED | APPROVED | DENIED
+  grantedDueAt  DateTime?
+  decidedById   String?
+  decidedAt     DateTime?
+  decisionNote  String?
+  createdAt     DateTime @default(now())
+
+  @@unique([assignmentId, studentUserId])
+  @@index([assignmentId])
+}
+
+// ASG024 — every submit / resubmit keeps its own snapshot, so earlier work is never overwritten.
+model SubmissionVersion {
+  id           String   @id @default(cuid())
+  submissionId String
+  submission   Submission @relation(fields: [submissionId], references: [id], onDelete: Cascade)
+  versionNo    Int
+  textAnswer   String?
+  fileAssetIds String[] @default([])
+  isLate       Boolean  @default(false)
+  note         String?
+  submittedAt  DateTime @default(now())
+
+  @@unique([submissionId, versionNo])
+}
+
+model Submission {
+  id            String      @id @default(cuid())
+  assessmentId  String?
+  assessment    Assessment? @relation(fields: [assessmentId], references: [id])
+  assignmentId  String?
+  assignment    Assignment? @relation(fields: [assignmentId], references: [id])
+  studentUserId String
+  fileUrl       String?
+  textAnswer    String?
+  submittedAt   DateTime    @default(now())
+  score         Float?
+  gradedById    String?
+  gradedAt      DateTime?
+  feedback      String?
+  criteriaScores Json?      // EX021 — [{ name, maxMarks, score }] when graded against a Rubric
+  aiAssisted    Boolean     @default(false)
+  integrityFlag Boolean     @default(false)
+
+  // Batch 77 — assignments v2. Defaults keep every existing row valid.
+  isDraft        Boolean    @default(false)   // ASG017 saved but not yet handed in
+  isLate         Boolean    @default(false)   // ASG020
+  lateMinutes    Int?
+  latePenaltyPct Float?                       // ASG019 percentage taken off rawScore
+  rawScore       Float?                       // score before the late penalty
+  fileAssetIds   String[]   @default([])      // ASG009/010 uploaded evidence / files
+  groupId        String?                      // ASG007
+  versionCount   Int        @default(1)       // ASG023/024
+  resubmittedAt  DateTime?                    // ASG036 set when handed in again after grading
+  needsRegrade   Boolean    @default(false)
+  competencyResult String?                    // ASG029 COMPETENT | NOT_YET_COMPETENT
+  annotations    Json?                        // ASG026/034 [{ start, end, quote, comment }]
+  feedbackAssetIds String[] @default([])      // ASG032/033/034 audio / video / annotated file feedback
+  similarityScore Float?                      // ASG039 highest word-overlap % against classmates
+  similarityNote  String?
+  versions       SubmissionVersion[]
+  peerReviews   PeerReview[]
+  questionResponses QuestionResponse[]
+  marks         SubmissionMark[]
+  amendmentRequests ResultsAmendmentRequest[]
+  aiFeedback       AiFeedbackSession[] @relation("AiFeedback")     // Batch 44: AI feedback generation
+  
+  // Batch 43
+  similarityChecks SimilarityCheck[]
+  similarityChecksPaired SimilarityCheck[] @relation("SimilarityCheckPaired")
+  // Batch 56
+  practicalChecklistResult PracticalChecklistResult?
+
+  // Batch 65 — VBI025/034: when this Submission was posted by the Virtual
+  // Business Lab integration rather than entered/graded directly, this
+  // links back to the approved result that produced it. Unique because one
+  // Lab result posts at most one Submission (re-posting on reversal updates
+  // this same row rather than creating a second one).
+  vblResultId String? @unique
+  vblResult   VirtualLabAssessmentResult? @relation(fields: [vblResultId], references: [id])
+}
+
+// ---------------------------------------------------------------------------
+// CREDENTIALS: TRANSCRIPTS & CERTIFICATES
+// ---------------------------------------------------------------------------
+
+model Transcript {
+  id            String   @id @default(cuid())
+  studentId     String
+  student       Student  @relation(fields: [studentId], references: [id])
+  documentId    String   @unique
+  verificationUrl String
+  issuedAt      DateTime @default(now())
+  signedHash    String
+  // Printable-transcript feature (additive, nullable): the exact JSON text that was signed, so an issued transcript can be
+  // re-displayed/printed later unaffected by grade edits. Deliberately TEXT, not Json: Postgres jsonb reorders object keys,
+  // which would break the HMAC signature check on re-read. Null on transcripts issued before this existed.
+  payload       String?
+  revoked       Boolean  @default(false)
+  revokedReason String?
+  revokedAt     DateTime?
+}
+
+model Certificate {
+  id              String   @id @default(cuid())
+  studentId       String
+  student         Student  @relation(fields: [studentId], references: [id])
+  qualification   String
+  documentId      String   @unique
+  verificationUrl String
+  issuedAt        DateTime @default(now())
+  signedHash      String
+  revoked         Boolean  @default(false)
+  revokedReason   String?
+  revokedAt       DateTime?
+}
+
+// ---------------------------------------------------------------------------
+// FINANCE
+// ---------------------------------------------------------------------------
+
+model Invoice {
+  id         String   @id @default(cuid())
+  studentId  String
+  student    Student  @relation(fields: [studentId], references: [id])
+  semester   String
+  amountDue  Decimal  @db.Decimal(10, 2)
+  amountPaid Decimal  @default(0) @db.Decimal(10, 2)
+  dueDate    DateTime
+  status     String   @default("unpaid") // unpaid | partial | paid | overdue
+  payments   Payment[]
+  installmentPlans InstallmentPlan[]
+  createdAt  DateTime @default(now())
+}
+
+model Payment {
+  id          String   @id @default(cuid())
+  invoiceId   String
+  invoice     Invoice  @relation(fields: [invoiceId], references: [id])
+  amount      Decimal  @db.Decimal(10, 2)
+  method      String   // mpesa | bank | card
+  reference   String   @unique
+  paidAt      DateTime @default(now())
+  receipt     Receipt?
+  reversedAt  DateTime?
+  reversalReason String?
+  refundRequests RefundRequest[]
+}
+
+// FN012 — refund management: a request/approval workflow, same discipline
+// as results amendments and everything else that touches money or grades
+// in this codebase — approval is a distinct action from the request, and
+// only approval actually posts the reversing journal entry and reduces
+// the invoice balance.
+model RefundRequest {
+  id            String    @id @default(cuid())
+  paymentId     String
+  payment       Payment   @relation(fields: [paymentId], references: [id])
+  amount        Decimal   @db.Decimal(10, 2)
+  reason        String
+  requestedById String
+  status        String    @default("pending") // pending | approved | rejected
+  decidedById   String?
+  decidedAt     DateTime?
+  decisionNote  String?
+  createdAt     DateTime  @default(now())
+}
+
+// FN014 — installment plans: a real, persisted schedule (not just computed
+// on the fly), so it survives even as the invoice balance changes.
+model InstallmentPlan {
+  id          String   @id @default(cuid())
+  invoiceId   String
+  invoice     Invoice  @relation(fields: [invoiceId], references: [id])
+  createdById String
+  createdAt   DateTime @default(now())
+
+  items InstallmentScheduleItem[]
+}
+
+model InstallmentScheduleItem {
+  id        String   @id @default(cuid())
+  planId    String
+  plan      InstallmentPlan @relation(fields: [planId], references: [id])
+  dueDate   DateTime
+  amount    Decimal  @db.Decimal(10, 2)
+  paidAt    DateTime?
+}
+
+// FN025/026 — budgets: a draft->submitted->approved/rejected workflow,
+// matching dev rule 21 (human approval for high-impact financial
+// decisions) — a budget can never self-approve.
+model Budget {
+  id             String    @id @default(cuid())
+  department     String
+  category       String
+  fiscalPeriod   String    // e.g. "2026-S1"
+  allocatedAmount Decimal  @db.Decimal(12, 2)
+  justification  String?
+  status         String    @default("draft") // draft | submitted | approved | rejected
+  submittedById  String?
+  submittedAt    DateTime?
+  approvedById   String?
+  approvedAt     DateTime?
+  decisionNote   String?
+  createdAt      DateTime  @default(now())
+}
+
+// FN032 — inventory: consumable/stock items, distinct from the fixed
+// Asset register. quantityOnHand is maintained transactionally from
+// InventoryTransaction rows (a real stock ledger), not a bare mutable
+// field that could drift from its own history.
+model InventoryItem {
+  id            String   @id @default(cuid())
+  name          String
+  category      String
+  unit          String   // e.g. "boxes", "reams", "units"
+  quantityOnHand Int     @default(0)
+  reorderLevel  Int      @default(0)
+  location      String?
+  createdAt     DateTime @default(now())
+
+  transactions InventoryTransaction[]
+}
+
+model InventoryTransaction {
+  id          String   @id @default(cuid())
+  itemId      String
+  item        InventoryItem @relation(fields: [itemId], references: [id])
+  type        String   // restock | consumption | adjustment
+  quantity    Int      // positive for restock, negative for consumption; adjustment can be either
+  note        String?
+  recordedById String
+  recordedAt  DateTime @default(now())
+}
+
+// ---------------------------------------------------------------------------
+// INDUSTRIAL ATTACHMENT
+// ---------------------------------------------------------------------------
+
+model Employer {
+  id        String   @id @default(cuid())
+  name      String
+  sector    String?
+  location  String?
+  contactEmail String?
+  employerProfile EmployerProfile?
+  placements AttachmentPlacement[]
+  postings  InternshipPosting[]
+}
+
+model EmployerProfile {
+  id         String   @id @default(cuid())
+  userId     String   @unique
+  user       User     @relation(fields: [userId], references: [id])
+  employerId String   @unique
+  employer   Employer @relation(fields: [employerId], references: [id])
+}
+
+model AttachmentPlacement {
+  id           String   @id @default(cuid())
+  studentId    String
+  student      Student  @relation(fields: [studentId], references: [id])
+  employerId   String
+  employer     Employer @relation(fields: [employerId], references: [id])
+  supervisorName String?
+  startDate    DateTime
+  endDate      DateTime
+  status       String   @default("pending") // pending | active | completed | terminated
+  logbookEntries LogbookEntry[]
+}
+
+model LogbookEntry {
+  id           String   @id @default(cuid())
+  placementId  String
+  placement    AttachmentPlacement @relation(fields: [placementId], references: [id])
+  weekNumber   Int
+  summary      String
+  submittedAt  DateTime @default(now())
+  supervisorSignOff Boolean @default(false)
+}
+
+// ---------------------------------------------------------------------------
+// DIGITAL LIBRARY
+// ---------------------------------------------------------------------------
+
+model LibraryResource {
+  id          String   @id @default(cuid())
+  title       String
+  author      String?
+  type        String   // ebook | journal | oer | video | case_study | government_doc
+  subject     String?
+  fileUrl     String?
+  externalUrl String?
+  licence     String?  // open | licensed | restricted
+  // LB004 — real full-text search target. Optional plain-text body (an
+  // abstract, an OCR'd extract, or a librarian-pasted excerpt) a librarian
+  // adds at catalogue time. When null, this resource is still only
+  // findable by title/author/subject — the search code never pretends
+  // content exists when this is empty.
+  content     String?  @db.Text
+  // LB005–010 — free-form, type-scoped fields (e.g. isbn/edition for an
+  // ebook, volume/issue/doi for a journal, durationMinutes for a video).
+  // Kept as JSON rather than a wide sparse table of nullable columns; the
+  // known keys per type are documented and validated in library.ts, not
+  // enforced at the DB layer.
+  metadata    Json?
+  addedAt     DateTime @default(now())
+
+  bookmarks   LibraryBookmark[]
+  readingListItems ReadingListItem[]
+  accessGrants LibraryAccessGrant[]
+  usageEvents  LibraryUsageEvent[]
+  annotations  LibraryAnnotation[]
+}
+
+// LB012 — real annotation: a page-anchored note a reader writes about a
+// resource, private to them. This is not free-hand highlighting/drawing
+// over the PDF (this platform doesn't render or manipulate PDF page
+// content) — it's a genuine per-page note a student can build a reading
+// record from, viewed alongside the inline PDF viewer (LB011).
+model LibraryAnnotation {
+  id         String   @id @default(cuid())
+  resourceId String
+  resource   LibraryResource @relation(fields: [resourceId], references: [id])
+  userId     String
+  page       Int?
+  note       String
+  createdAt  DateTime @default(now())
+}
+
+// LB038 — copyright controls, actually enforced: a "restricted" resource's
+// fileUrl is withheld from the catalogue response unless the requesting
+// user is library staff or holds an explicit grant recorded here. This
+// replaces the old state where a `licence` field existed but nothing in
+// the code ever checked it.
+model LibraryAccessGrant {
+  id          String   @id @default(cuid())
+  userId      String
+  resourceId  String
+  resource    LibraryResource @relation(fields: [resourceId], references: [id])
+  grantedById String
+  grantedAt   DateTime @default(now())
+
+  @@unique([userId, resourceId])
+}
+
+// LB039 — usage analytics: a real event log (view/bookmark/checkout),
+// not a derived guess — "most used resources" is a real count over this
+// table.
+model LibraryUsageEvent {
+  id         String   @id @default(cuid())
+  resourceId String
+  resource   LibraryResource @relation(fields: [resourceId], references: [id])
+  userId     String
+  action     String   // view | bookmark | checkout
+  occurredAt DateTime @default(now())
+}
+
+model LibraryBookmark {
+  id         String   @id @default(cuid())
+  userId     String
+  resourceId String
+  resource   LibraryResource @relation(fields: [resourceId], references: [id])
+  note       String?
+  createdAt  DateTime @default(now())
+
+  @@unique([userId, resourceId])
+}
+
+model ReadingList {
+  id        String   @id @default(cuid())
+  userId    String
+  title     String
+  createdAt DateTime @default(now())
+
+  items     ReadingListItem[]
+}
+
+model ReadingListItem {
+  id            String   @id @default(cuid())
+  readingListId String
+  readingList   ReadingList @relation(fields: [readingListId], references: [id])
+  resourceId    String
+  resource      LibraryResource @relation(fields: [resourceId], references: [id])
+  addedAt       DateTime @default(now())
+}
+
+// ---------------------------------------------------------------------------
+// EMPLOYER / INTERNSHIP POSTINGS
+// ---------------------------------------------------------------------------
+
+model InternshipPosting {
+  id          String   @id @default(cuid())
+  employerId  String
+  employer    Employer @relation(fields: [employerId], references: [id])
+  title       String
+  description String
+  slots       Int      @default(1)
+  skillsRequired String[] @default([])
+  status      String   @default("open") // open | closed
+  postedAt    DateTime @default(now())
+  applications InternshipApplication[]
+}
+
+// SP038 — a student-initiated application against a posting, distinct from
+// the auto-computed skill match: a match score is a suggestion, this is an
+// actual expressed intent to apply. Deciding "accepted" is the one place in
+// the whole codebase that creates a real AttachmentPlacement — until this
+// model, nothing did (placements could only ever be viewed, never created).
+model InternshipApplication {
+  id          String   @id @default(cuid())
+  studentId   String
+  student     Student  @relation(fields: [studentId], references: [id])
+  postingId   String
+  posting     InternshipPosting @relation(fields: [postingId], references: [id])
+  coverNote   String?
+  status      String   @default("applied") // applied | shortlisted | accepted | rejected
+  appliedAt   DateTime @default(now())
+  decidedAt   DateTime?
+  decidedById String?
+
+  @@unique([studentId, postingId])
+}
+
+model PeerReview {
+  id           String   @id @default(cuid())
+  submissionId String
+  submission   Submission @relation(fields: [submissionId], references: [id])
+  reviewerUserId String
+  score        Float?
+  comment      String
+  createdAt    DateTime @default(now())
+}
+
+
+model Complaint {
+  id          String   @id @default(cuid())
+  category    String
+  description String
+  email       String?
+  status      String   @default("open") // open | in_progress | resolved
+  assignedRole Role?
+  createdAt   DateTime @default(now())
+}
+
+// ---------------------------------------------------------------------------
+// KUCCPS EXCHANGE (import/export workflow, not a live API integration)
+// ---------------------------------------------------------------------------
+
+model KuccpsExportBatch {
+  id          String   @id @default(cuid())
+  generatedById String
+  recordCount Int
+  fileUrl     String
+  status      String   @default("generated") // generated | submitted | acknowledged
+  createdAt   DateTime @default(now())
+}
+
+model KuccpsImportBatch {
+  id           String   @id @default(cuid())
+  importedById String
+  sourceFileUrl String
+  recordCount  Int
+  matchedCount Int
+  createdAt    DateTime @default(now())
+}
+
+
+
+// ---------------------------------------------------------------------------
+// STUDENT LIFE: EVENTS, CLUBS, COUNSELLING, DISABILITY SUPPORT
+// ---------------------------------------------------------------------------
+
+model Event {
+  id          String   @id @default(cuid())
+  title       String
+  description String?
+  startsAt    DateTime
+  location    String?  // "Virtual" or a physical venue
+  createdAt   DateTime @default(now())
+}
+
+model Club {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  memberships ClubMembership[]
+}
+
+model ClubMembership {
+  id        String   @id @default(cuid())
+  clubId    String
+  club      Club     @relation(fields: [clubId], references: [id])
+  studentId String
+  student   Student  @relation(fields: [studentId], references: [id])
+  joinedAt  DateTime @default(now())
+
+  @@unique([clubId, studentId])
+}
+
+model CounsellingRequest {
+  id          String   @id @default(cuid())
+  studentId   String
+  student     Student  @relation(fields: [studentId], references: [id])
+  reason      String
+  preferredMode String @default("video_call") // video_call | phone | in_app_chat
+  status      String   @default("requested") // requested | scheduled | completed
+  counsellorNote String?
+  createdAt   DateTime @default(now())
+}
+
+model AccommodationRequest {
+  id          String   @id @default(cuid())
+  studentId   String
+  student     Student  @relation(fields: [studentId], references: [id])
+  needDescription String
+  status      String   @default("submitted") // submitted | approved | in_place | denied
+  reviewedById String?
+  createdAt   DateTime @default(now())
+}
+
+
+
+// ---------------------------------------------------------------------------
+// COMPETENCY PASSPORT
+// ---------------------------------------------------------------------------
+
+model Competency {
+  id          String   @id @default(cuid())
+  programmeId String
+  programme   Programme @relation(fields: [programmeId], references: [id])
+  name        String
+  description String?
+  createdAt   DateTime @default(now())
+
+  records     CompetencyRecord[]
+  evidenceSubmissions CompetencyEvidence[]
+  microcredentials Microcredential[]
+  questions   Question[]
+
+  // TP009 — units whose curriculum has been mapped as building this competency
+  unitCompetencies UnitCompetency[]
+}
+
+// TP009 — Competency mapping: explicit curriculum-to-competency mapping,
+// distinct from CompetencyRecord (which tracks a *student's* attainment).
+// This is the trainer/coordinator-facing map of which units actually teach
+// towards which programme competencies — previously there was no link
+// between Competency and Unit at all, only Competency <-> Programme.
+model UnitCompetency {
+  id           String     @id @default(cuid())
+  unitId       String
+  unit         Unit       @relation(fields: [unitId], references: [id], onDelete: Cascade)
+  competencyId String
+  competency   Competency @relation(fields: [competencyId], references: [id], onDelete: Cascade)
+  mappedById   String
+  mappedAt     DateTime   @default(now())
+
+  @@unique([unitId, competencyId])
+  @@index([unitId])
+  @@index([competencyId])
+}
+
+model CompetencyRecord {
+  id              String   @id @default(cuid())
+  studentId       String
+  student         Student  @relation(fields: [studentId], references: [id])
+  competencyId    String
+  competency      Competency @relation(fields: [competencyId], references: [id])
+  level           String   @default("developing") // developing | competent | advanced
+  evidenceSummary String?
+  assessmentScore Float?
+  trainerVerifiedById String?
+  industryVerifiedByEmployerId String?
+  achievedAt      DateTime?
+  createdAt       DateTime @default(now())
+}
+
+// SP022 — competency evidence portfolio: a student-initiated submission,
+// distinct from CompetencyRecord (which only a trainer/examiner can write).
+// A trainer reviews it and, if accepted, creates or upgrades the student's
+// CompetencyRecord — evidence never silently becomes a verified record on
+// its own.
+model CompetencyEvidence {
+  id            String    @id @default(cuid())
+  studentId     String
+  student       Student   @relation(fields: [studentId], references: [id])
+  competencyId  String
+  competency    Competency @relation(fields: [competencyId], references: [id])
+  description   String
+  evidenceUrl   String?
+  status        String    @default("pending") // pending | accepted | rejected
+  reviewedById  String?
+  reviewedAt    DateTime?
+  reviewNote    String?
+  submittedAt   DateTime  @default(now())
+}
+
+// SP030 — student knowledge notebook: notes the student saves themselves,
+// including AI tutor explanations they choose to keep. Purely self-service
+// storage — never read by anyone but the student who owns it.
+model NotebookEntry {
+  id            String   @id @default(cuid())
+  studentUserId String
+  unitId        String?
+  unit          Unit?    @relation(fields: [unitId], references: [id])
+  title         String
+  content       String
+  sourceType    String   @default("manual") // manual | ai_tutor
+  createdAt     DateTime @default(now())
+}
+
+// SP023 — digital portfolio: student-curated showcase of their own work
+// (a project, a piece of research, a badge, an attachment outcome). Purely
+// a display/organization layer over things the student already has —
+// doesn't create or alter any academic record.
+model PortfolioItem {
+  id          String   @id @default(cuid())
+  studentId   String
+  student     Student  @relation(fields: [studentId], references: [id])
+  title       String
+  description String?
+  category    String   // project | competency | badge | research | attachment | other
+  linkUrl     String?
+  addedAt     DateTime @default(now())
+}
+
+// ---------------------------------------------------------------------------
+// RECOGNITION OF PRIOR LEARNING (RPL)
+// ---------------------------------------------------------------------------
+
+model RplApplication {
+  id             String   @id @default(cuid())
+  applicantName  String
+  applicantEmail String
+  programmeId    String
+  programme      Programme @relation(fields: [programmeId], references: [id])
+  experienceSummary String
+  status         String   @default("submitted") // submitted | portfolio_requested | assessing | decided
+  assessorId     String?
+  decision       String?  // full_credit | partial_credit | denied
+  creditedUnits  String[] @default([])
+  decidedAt      DateTime?
+  createdAt      DateTime @default(now())
+}
+
+// ---------------------------------------------------------------------------
+// ACADEMIC APPEALS
+// ---------------------------------------------------------------------------
+
+model Appeal {
+  id           String   @id @default(cuid())
+  studentId    String
+  student      Student  @relation(fields: [studentId], references: [id])
+  type         String   // grade | disciplinary | examination | fee | admission | credit_transfer | rpl
+  reason       String
+  evidenceUrl  String?
+  status       String   @default("submitted") // submitted | under_review | decided
+  decision     String?
+  decidedById  String?
+  decidedAt    DateTime?
+  createdAt    DateTime @default(now())
+}
+
+
+
+// ---------------------------------------------------------------------------
+// ATTENDANCE & TIMETABLE
+// ---------------------------------------------------------------------------
+
+model AttendanceRecord {
+  id          String   @id @default(cuid())
+  studentId   String
+  student     Student  @relation(fields: [studentId], references: [id])
+  courseId    String
+  course      Course   @relation(fields: [courseId], references: [id])
+  sessionDate DateTime
+  present     Boolean
+  recordedById String
+  createdAt   DateTime @default(now())
+
+  @@unique([studentId, courseId, sessionDate])
+}
+
+model TimetableEntry {
+  id        String   @id @default(cuid())
+  courseId  String
+  course    Course   @relation(fields: [courseId], references: [id])
+  dayOfWeek Int      // 0=Sunday .. 6=Saturday
+  startTime String   // "HH:MM"
+  endTime   String
+  mode      String   @default("live") // live | recorded_release
+  createdAt DateTime @default(now())
+}
+
+// AD011 — academic calendar: institution-wide dates (term start/end,
+// holidays, registration windows, exam periods) — distinct from a
+// student's or trainer's personal TimetableEntry-based schedule.
+model AcademicCalendarEvent {
+  id          String   @id @default(cuid())
+  title       String
+  type        String   // term | holiday | registration_window | exam_period | other
+  startDate   DateTime
+  endDate     DateTime
+  description String?
+  createdById String
+  createdAt   DateTime @default(now())
+}
+
+// ---------------------------------------------------------------------------
+// ORGANIZATION: DEPARTMENTS & TASKS
+// ---------------------------------------------------------------------------
+
+model Department {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  headStaffId String?
+  createdAt DateTime @default(now())
+}
+
+model Task {
+  id          String   @id @default(cuid())
+  title       String
+  description String?
+  assignedToId String
+  status      String   @default("open") // open | in_progress | done
+  dueDate     DateTime?
+  createdById String
+  createdAt   DateTime @default(now())
+}
+
+// ---------------------------------------------------------------------------
+// FINANCE: STRUCTURES & SUPPORT
+// ---------------------------------------------------------------------------
+
+model FeeStructureItem {
+  id          String   @id @default(cuid())
+  programmeId String
+  programme   Programme @relation(fields: [programmeId], references: [id])
+  semester    Int
+  item        String   // "Tuition", "Registration", "Practical materials"
+  amount      Decimal  @db.Decimal(10, 2)
+  createdAt   DateTime @default(now())
+}
+
+model Scholarship {
+  id          String   @id @default(cuid())
+  studentId   String
+  student     Student  @relation(fields: [studentId], references: [id])
+  sponsorName String
+  type        String   @default("scholarship") // scholarship | sponsorship | discount
+  amount      Decimal  @db.Decimal(10, 2)
+  semester    String
+  approvedById String
+  createdAt   DateTime @default(now())
+}
+
+// ---------------------------------------------------------------------------
+// RUBRICS, BADGES, FORUMS, CPD, INTERVENTIONS
+// ---------------------------------------------------------------------------
+
+model Rubric {
+  id           String   @id @default(cuid())
+  assessmentId String   @unique
+  assessment   Assessment @relation(fields: [assessmentId], references: [id])
+  criteria     Json     // [{ name, description, maxMarks }]
+  aiFeedback   AiFeedbackSession[] @relation("RubricAiFeedback")  // Batch 44: AI feedback generation
+  createdById  String
+  createdAt    DateTime @default(now())
+}
+
+model Badge {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  iconEmoji   String   @default("🏅")
+  createdAt   DateTime @default(now())
+
+  awards      StudentBadge[]
+}
+
+model StudentBadge {
+  id        String   @id @default(cuid())
+  studentId String
+  student   Student  @relation(fields: [studentId], references: [id])
+  badgeId   String
+  badge     Badge    @relation(fields: [badgeId], references: [id])
+  awardedById String
+  awardedAt DateTime @default(now())
+
+  @@unique([studentId, badgeId])
+}
+
+model Forum {
+  id        String   @id @default(cuid())
+  courseId  String
+  course    Course   @relation(fields: [courseId], references: [id])
+  title     String
+  createdAt DateTime @default(now())
+
+  posts     ForumPost[]
+}
+
+model ForumPost {
+  id        String   @id @default(cuid())
+  forumId   String
+  forum     Forum    @relation(fields: [forumId], references: [id])
+  authorId  String
+  body      String
+  parentId  String?
+  createdAt DateTime @default(now())
+}
+
+model CpdActivity {
+  id          String   @id @default(cuid())
+  trainerId   String
+  trainer     Trainer  @relation(fields: [trainerId], references: [id])
+  title       String
+  provider    String?
+  hours       Int
+  completedAt DateTime
+  evidenceUrl String?
+  createdAt   DateTime @default(now())
+}
+
+model InterventionNote {
+  id          String   @id @default(cuid())
+  studentId   String
+  student     Student  @relation(fields: [studentId], references: [id])
+  trainerId   String
+  trainer     Trainer  @relation(fields: [trainerId], references: [id])
+  note        String
+  actionTaken String?
+  createdAt   DateTime @default(now())
+}
+
+
+
+// ---------------------------------------------------------------------------
+// RESEARCH & INNOVATION
+// ---------------------------------------------------------------------------
+
+model ResearchProject {
+  id             String   @id @default(cuid())
+  title          String
+  type           String   // student_research | trainer_research | innovation | startup
+  leadUserId     String
+  supervisorId   String?  // Trainer.id
+  supervisor     Trainer? @relation(fields: [supervisorId], references: [id])
+  status         String   @default("proposed") // proposed | approved | in_progress | completed | published
+  abstract       String?
+  ethicsRequired Boolean  @default(false)
+  // Kept in sync with the latest EthicsSubmission's status (true only once
+  // one has been decided "approved") rather than toggled directly — see
+  // LB027 below.
+  ethicsApproved Boolean  @default(false)
+  createdAt      DateTime @default(now())
+
+  milestones     ResearchMilestone[]
+  publications   Publication[]
+  notes          ResearchNote[]
+  bibliography   BibliographyEntry[]
+  literatureMatrix LiteratureMatrixEntry[]
+  conferenceSubmissions ConferenceSubmission[]
+  grants         ResearchGrant[]
+  intellectualProperty IntellectualProperty[]
+  incubationRecords IncubationRecord[]
+  mentorships    Mentorship[]
+  ethicsSubmissions EthicsSubmission[]
+}
+
+// LB027 — real ethics review workflow: a researcher submits a protocol
+// (what will be done, the risks and how they're mitigated); a reviewer
+// moves it through real committee states and, only on approval, assigns a
+// protocol number. This replaces the old single ethicsApproved boolean
+// with an actual reviewable submission and a decision history — a project
+// can be sent back for revisions and resubmitted, which the old flag
+// couldn't represent at all.
+model EthicsSubmission {
+  id                 String   @id @default(cuid())
+  projectId          String
+  project            ResearchProject @relation(fields: [projectId], references: [id])
+  summary            String   // what will be done, to whom/what, and how
+  risksAndMitigation String?
+  status             String   @default("submitted") // submitted | under_review | revisions_requested | approved | rejected
+  protocolNumber     String?  // assigned by the reviewer only on approval
+  submittedAt        DateTime @default(now())
+  decidedAt          DateTime?
+  decidedById        String?
+  decisionNotes      String?
+}
+
+model ResearchMilestone {
+  id         String   @id @default(cuid())
+  projectId  String
+  project    ResearchProject @relation(fields: [projectId], references: [id])
+  title      String
+  dueDate    DateTime?
+  status     String   @default("pending") // pending | done
+  createdAt  DateTime @default(now())
+}
+
+// LB016 — research notebook: notes tied to a specific research project,
+// distinct from a student's general knowledge notebook (NotebookEntry).
+model ResearchNote {
+  id            String   @id @default(cuid())
+  projectId     String
+  project       ResearchProject @relation(fields: [projectId], references: [id])
+  authorUserId  String
+  title         String
+  content       String
+  createdAt     DateTime @default(now())
+}
+
+// LB018 — bibliography manager: sources a researcher is tracking for a
+// project. Formatting (APA/MLA) reuses the same pure-logic approach as
+// LB017 (frontend/src/lib/citations.ts) — no field is ever invented, only
+// what's actually entered here gets formatted.
+model BibliographyEntry {
+  id          String   @id @default(cuid())
+  projectId   String
+  project     ResearchProject @relation(fields: [projectId], references: [id])
+  sourceType  String   // book | journal_article | website | report | other
+  title       String
+  author      String?
+  year        Int?
+  publisher   String?
+  url         String?
+  addedAt     DateTime @default(now())
+}
+
+// LB019 — literature matrix: a structured comparison table a researcher
+// builds while reviewing sources — real entries they write, not an
+// AI-generated summary of content the system doesn't actually have.
+model LiteratureMatrixEntry {
+  id             String   @id @default(cuid())
+  projectId      String
+  project        ResearchProject @relation(fields: [projectId], references: [id])
+  sourceTitle    String
+  author         String?
+  year           Int?
+  methodology    String?
+  keyFindings    String?
+  relevanceNote  String?
+  addedAt        DateTime @default(now())
+}
+
+// LB029 — conference management: real deadlines and submission tracking.
+model Conference {
+  id                  String   @id @default(cuid())
+  name                String
+  location            String?
+  startDate           DateTime
+  endDate             DateTime
+  submissionDeadline  DateTime?
+  url                 String?
+  createdAt           DateTime @default(now())
+
+  submissions ConferenceSubmission[]
+}
+
+model ConferenceSubmission {
+  id            String    @id @default(cuid())
+  conferenceId  String
+  conference    Conference @relation(fields: [conferenceId], references: [id])
+  projectId     String
+  project       ResearchProject @relation(fields: [projectId], references: [id])
+  title         String
+  status        String    @default("submitted") // submitted | accepted | rejected | presented
+  submittedById String
+  submittedAt   DateTime  @default(now())
+}
+
+// LB030 — research funding: real grant applications and their status,
+// never a projected/assumed award.
+model ResearchGrant {
+  id          String    @id @default(cuid())
+  projectId   String
+  project     ResearchProject @relation(fields: [projectId], references: [id])
+  funder      String
+  amount      Decimal   @db.Decimal(12, 2)
+  status      String    @default("applied") // applied | awarded | rejected | completed
+  appliedAt   DateTime  @default(now())
+  decidedAt   DateTime?
+}
+
+// LB034 — intellectual property: tracked at whatever stage it's really
+// at (idea/filed/granted) — never claimed as "granted" without a real
+// filing number recorded.
+model IntellectualProperty {
+  id            String   @id @default(cuid())
+  projectId     String
+  project       ResearchProject @relation(fields: [projectId], references: [id])
+  type          String   // patent | trademark | copyright | trade_secret
+  title         String
+  filingStatus  String   @default("idea") // idea | filed | granted
+  filingNumber  String?
+  filedAt       DateTime?
+  createdAt     DateTime @default(now())
+}
+
+model Publication {
+  id          String   @id @default(cuid())
+  projectId   String?
+  project     ResearchProject? @relation(fields: [projectId], references: [id])
+  title       String
+  authors     String[]
+  venue       String?  // journal/conference name
+  year        Int?
+  url         String?
+  createdAt   DateTime @default(now())
+}
+
+
+
+// ---------------------------------------------------------------------------
+// EXAMINATION INCIDENTS
+// ---------------------------------------------------------------------------
+
+model ExamIncident {
+  id           String   @id @default(cuid())
+  assessmentId String
+  assessment   Assessment @relation(fields: [assessmentId], references: [id])
+  studentId    String?
+  reportedById String
+  description  String
+  status       String   @default("open") // open | investigating | resolved
+  createdAt    DateTime @default(now())
+}
+
+// ---------------------------------------------------------------------------
+// PROCUREMENT, EXPENSES & ASSETS (basic ERP)
+// ---------------------------------------------------------------------------
+
+model Supplier {
+  id           String   @id @default(cuid())
+  name         String
+  contactEmail String?
+  contactPhone String?
+  createdAt    DateTime @default(now())
+
+  purchaseOrders PurchaseOrder[]
+}
+
+model PurchaseOrder {
+  id          String   @id @default(cuid())
+  supplierId  String
+  supplier    Supplier @relation(fields: [supplierId], references: [id])
+  description String
+  amount      Decimal  @db.Decimal(10, 2)
+  status      String   @default("draft") // draft | approved | ordered | received | cancelled
+  requestedById String
+  approvedById  String?
+  createdAt   DateTime @default(now())
+}
+
+model Expense {
+  id          String   @id @default(cuid())
+  category    String   // utilities | salaries | maintenance | supplies | other
+  description String
+  amount      Decimal  @db.Decimal(10, 2)
+  incurredAt  DateTime
+  approvedById String?
+  paidAt      DateTime? // null = still an outstanding Accounts Payable liability
+  programmeId String?  // optional: direct-attributed to one programme for FN035 economics; null = institution-wide overhead
+  programme   Programme? @relation(fields: [programmeId], references: [id])
+  createdAt   DateTime @default(now())
+
+  journalEntries JournalEntry[]
+}
+
+// ---------------------------------------------------------------------------
+// FN023/024 — general ledger and chart of accounts. Real double-entry
+// bookkeeping: every JournalEntry's lines must sum debits = credits before
+// the route will persist it (enforced in code, not just trusted). Accounts
+// are seeded lazily on first use (ensureDefaultAccounts in lib/ledger.ts)
+// rather than requiring a separate migration/seed run.
+// ---------------------------------------------------------------------------
+
+model ChartOfAccount {
+  id        String   @id @default(cuid())
+  code      String   @unique
+  name      String
+  type      String   // asset | liability | equity | revenue | expense
+  createdAt DateTime @default(now())
+
+  debitLines  JournalLine[] @relation("DebitAccount")
+  creditLines JournalLine[] @relation("CreditAccount")
+}
+
+model JournalEntry {
+  id           String   @id @default(cuid())
+  date         DateTime @default(now())
+  description  String
+  postedById   String?  // null = system-posted (e.g. auto-posted from a payment)
+  sourceType   String?  // payment | expense | manual
+  sourceId     String?
+  expenseId    String?
+  expense      Expense? @relation(fields: [expenseId], references: [id])
+  createdAt    DateTime @default(now())
+
+  lines JournalLine[]
+}
+
+model JournalLine {
+  id             String        @id @default(cuid())
+  journalEntryId String
+  journalEntry   JournalEntry  @relation(fields: [journalEntryId], references: [id])
+  debitAccountId String?
+  debitAccount   ChartOfAccount? @relation("DebitAccount", fields: [debitAccountId], references: [id])
+  creditAccountId String?
+  creditAccount  ChartOfAccount? @relation("CreditAccount", fields: [creditAccountId], references: [id])
+  amount         Decimal       @db.Decimal(10, 2)
+}
+
+// FN018 — financial holds: an explicit administrative block, separate from
+// (and possibly in addition to) an unpaid fee balance. releasedAt being
+// null is the single source of truth for "still active" — no separate
+// boolean that could drift out of sync with it.
+model FinancialHold {
+  id           String    @id @default(cuid())
+  studentId    String
+  student      Student   @relation(fields: [studentId], references: [id])
+  reason       String
+  placedById   String
+  placedAt     DateTime  @default(now())
+  releasedById String?
+  releasedAt   DateTime?
+}
+
+// FN010 — digital receipts, signed and verifiable the same way as a
+// transcript/certificate/letter.
+model Receipt {
+  id              String   @id @default(cuid())
+  paymentId       String   @unique
+  payment         Payment  @relation(fields: [paymentId], references: [id])
+  documentId      String   @unique
+  verificationUrl String
+  signedHash      String
+  issuedAt        DateTime @default(now())
+}
+
+// FN006/007 — tracks a pending M-Pesa STK push so the callback (which only
+// gives us the amount and a CheckoutRequestID) can be matched back to the
+// invoice it was for. Without this, the earlier callback handler had no
+// way to know which invoice to credit — which is exactly why it never
+// actually recorded a payment before this batch.
+model PendingMpesaPush {
+  id                String   @id @default(cuid())
+  checkoutRequestId String   @unique
+  invoiceId         String
+  amount            Decimal  @db.Decimal(10, 2)
+  phone             String
+  createdAt         DateTime @default(now())
+}
+
+model Asset {
+  id           String   @id @default(cuid())
+  name         String
+  category     String   // ict | furniture | vehicle | equipment | other
+  serialNumber String?
+  location     String?
+  acquiredAt   DateTime
+  value        Decimal  @db.Decimal(10, 2)
+  status       String   @default("in_use") // in_use | in_storage | disposed
+  createdAt    DateTime @default(now())
+}
+
+model AcademicRecordChange {
+  id           String   @id @default(cuid())
+  studentId    String
+  student      Student  @relation(fields: [studentId], references: [id])
+  type         String   // transfer | exemption | deferment | withdrawal | readmission
+  detail       String
+  effectiveDate DateTime
+  approvedById String
+  createdAt    DateTime @default(now())
+}
+
+// RG026 — results amendment: a request/approval workflow, never a silent
+// edit. Anyone can request; only a second, distinct authorized user can
+// approve, and only approval touches the actual Submission.score — matching
+// dev rule 21 (human approval for high-impact academic decisions).
+model ResultsAmendmentRequest {
+  id             String    @id @default(cuid())
+  submissionId   String
+  submission     Submission @relation(fields: [submissionId], references: [id])
+  currentScore   Float?
+  proposedScore  Float
+  reason         String
+  requestedById  String
+  status         String    @default("pending") // pending | approved | rejected
+  decidedById    String?
+  decidedAt      DateTime?
+  decisionNote   String?
+  createdAt      DateTime  @default(now())
+}
+
+// RG032/033/034 — student letters (status, enrollment verification,
+// completion). Every letter is a signed, verifiable document generated
+// from the student's real, current record at issue time — never a static
+// template with blanks. Completion letters are registrar-gated; the other
+// two types a student may self-issue since they only restate true current
+// state.
+model GeneratedLetter {
+  id              String   @id @default(cuid())
+  studentId       String
+  student         Student  @relation(fields: [studentId], references: [id])
+  type            String   // status | enrollment_verification | completion
+  documentId      String   @unique
+  content         String
+  verificationUrl String
+  signedHash      String
+  issuedById      String?
+  issuedAt        DateTime @default(now())
+  revoked         Boolean  @default(false)
+  revokedReason   String?
+}
+
+// RG038 — awarding-body records: which external body (KNEC, TVETA-recognized
+// awarding body, an international partner) actually confers the
+// qualification a programme leads to.
+model AwardingBody {
+  id                 String     @id @default(cuid())
+  name               String
+  accreditationNumber String?
+  contactEmail       String?
+  recognizedSince    DateTime?
+  createdAt          DateTime   @default(now())
+
+  programmes Programme[]
+}
+
+model CourseFeedback {
+  id         String   @id @default(cuid())
+  courseId   String
+  course     Course   @relation(fields: [courseId], references: [id])
+  studentId  String
+  type       String   // course | trainer
+  rating     Int      // 1-5
+  comment    String?
+  createdAt  DateTime @default(now())
+}
+
+model Microcredential {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  competencyId String?
+  competency  Competency? @relation(fields: [competencyId], references: [id])
+  createdAt   DateTime @default(now())
+
+  awards      StudentMicrocredential[]
+}
+
+model StudentMicrocredential {
+  id                String   @id @default(cuid())
+  studentId         String
+  student           Student  @relation(fields: [studentId], references: [id])
+  microcredentialId String
+  microcredential   Microcredential @relation(fields: [microcredentialId], references: [id])
+  awardedById       String
+  awardedAt         DateTime @default(now())
+
+  @@unique([studentId, microcredentialId])
+}
+
+model PolicyDocument {
+  id          String   @id @default(cuid())
+  title       String
+  category    String   // academic | financial | hr | it | safeguarding | other
+  documentUrl String
+  version     Int      @default(1)
+  approvedById String?
+  effectiveDate DateTime?
+  createdAt   DateTime @default(now())
+}
+
+model RiskRegisterEntry {
+  id           String   @id @default(cuid())
+  title        String
+  description  String
+  category     String   // regulatory | financial | academic | operational | reputational
+  likelihood   String   // low | medium | high
+  impact       String   // low | medium | high
+  mitigation   String?
+  ownerId      String
+  status       String   @default("open") // open | mitigated | closed
+  createdAt    DateTime @default(now())
+}
+
+model InternalAudit {
+  id          String   @id @default(cuid())
+  title       String
+  scope       String
+  auditorId   String
+  scheduledAt DateTime
+  status      String   @default("planned") // planned | in_progress | completed
+  createdAt   DateTime @default(now())
+
+  findings    AuditFinding[]
+}
+
+model AuditFinding {
+  id           String   @id @default(cuid())
+  auditId      String
+  audit        InternalAudit @relation(fields: [auditId], references: [id])
+  description  String
+  severity     String   // minor | major | critical
+  evidenceUrl  String?
+  status       String   @default("open") // open | resolved
+  createdAt    DateTime @default(now())
+
+  // QA030 — audit evidence: a finding is only really "resolved" once
+  // someone attaches evidence and the resolution is recorded, same
+  // discipline as CorrectiveAction's status trail.
+  resolvedById String?
+  resolvedAt   DateTime?
+}
+
+model QuestionResponse {
+  id           String   @id @default(cuid())
+  submissionId String
+  submission   Submission @relation(fields: [submissionId], references: [id])
+  questionId   String
+  question     Question @relation(fields: [questionId], references: [id])
+  answerGiven  String
+  isCorrect    Boolean?
+  createdAt    DateTime @default(now())
+  // Batch 76 — per-question marks (partial credit, negative marking, manual
+  // marking of written answers) and the trainer's comment on this answer.
+  marksAwarded    Float?
+  markerFeedback  String?
+  markedById      String?
+  markedAt        DateTime?
+
+  @@unique([submissionId, questionId])
+}
+
+model SubmissionMark {
+  id           String   @id @default(cuid())
+  submissionId String
+  submission   Submission @relation(fields: [submissionId], references: [id])
+  markerId     String
+  markerNumber Int      // 1 = first marker, 2 = second/moderator marker
+  score        Float
+  feedback     String?
+  createdAt    DateTime @default(now())
+
+  @@unique([submissionId, markerNumber])
+}
+
+model ExamSession {
+  id           String   @id @default(cuid())
+  assessmentId String
+  assessment   Assessment @relation(fields: [assessmentId], references: [id])
+  studentUserId String
+  startedAt    DateTime @default(now())
+  endedAt      DateTime?
+  ipAddress    String?
+  userAgent    String?
+  
+  // Batch 43
+  securityFlags ExamSessionSecurityFlag[]
+  // EX016 — Batch 56: continuous automatic activity logging during an
+  // attempt (tab-switch/visibility changes), distinct from the one-time
+  // browser/environment check above.
+  activityEvents ExamActivityEvent[]
+
+  @@unique([assessmentId, studentUserId])
+}
+
+// ---------------------------------------------------------------------------
+// AI GOVERNANCE
+// ---------------------------------------------------------------------------
+
+model AiConversation {
+  id         String   @id @default(cuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id])
+  context    String   // e.g. "tutor:unit-id", "academic-adviser", "helpdesk"
+  startedAt  DateTime @default(now())
+  messages   AiMessage[]
+}
+
+model AiMessage {
+  id             String         @id @default(cuid())
+  conversationId String
+  conversation   AiConversation @relation(fields: [conversationId], references: [id])
+  role           String         // user | assistant
+  content        String
+  sourceRefs     String[]       // curriculum/material IDs cited by the assistant
+  createdAt      DateTime       @default(now())
+}
+
+// AI001/AI004 — every call that passes through lib/ai-gateway.ts writes one
+// row here, whether it succeeded, failed, or was refused by the safety
+// layer (AI037). `feature` is the key from AI_FEATURE_CATALOG (ai-
+// gateway.ts) — e.g. "tutor", "marking-assistant" — so usage can be
+// broken down per AI feature, not just a global count. This is the only
+// thing in the codebase that tracks AI usage; AI040's governance routes
+// read this table.
+// AI002 — Model management. Through batch 61, the model id was a literal
+// string ("claude-sonnet-4-6") hard-coded inside callAnthropic() in
+// lib/ai-gateway.ts — the only way to point the institution's AI features
+// at a different model was to edit source code and redeploy. This is a
+// real, database-backed, admin-editable override: a singleton row (id
+// "default") read by the gateway on every call, falling back to the
+// hard-coded constant when no row exists yet (so a fresh install behaves
+// exactly as before this batch). Still genuinely only "anthropic" is a
+// wired provider (AI003) — this manages which model *within* that
+// provider is called, and records who changed it and when, not a
+// multi-provider model registry.
+model AiModelConfig {
+  id          String   @id @default("default")
+  modelId     String   @default("claude-sonnet-4-6")
+  notes       String?
+  updatedById String?
+  updatedAt   DateTime @updatedAt
+}
+
+model AiUsageLog {
+  id              String   @id @default(cuid())
+  feature         String
+  userId          String
+  role            String
+  success         Boolean
+  blockedBySafety Boolean  @default(false)
+  errorReason     String?  // "no_api_key" | "provider_error" | "blocked_by_safety" | "unconfigured_provider" | null on success
+  promptChars     Int
+  responseChars   Int      @default(0)
+  latencyMs       Int
+  createdAt       DateTime @default(now())
+
+  @@index([feature])
+  @@index([createdAt])
+  @@index([userId])
+}
+
+// ---------------------------------------------------------------------------
+// SUPPORT, DOCUMENTS, NOTIFICATIONS, AUDIT
+// ---------------------------------------------------------------------------
+
+model HelpdeskTicket {
+  id           String   @id @default(cuid())
+  raisedById   String
+  raisedBy     User     @relation("TicketRaisedBy", fields: [raisedById], references: [id])
+  studentId    String?
+  student      Student? @relation(fields: [studentId], references: [id])
+  subject      String
+  body         String
+  status       String   @default("open") // open | in_progress | resolved | escalated
+  handledByAi  Boolean  @default(false)
+  createdAt    DateTime @default(now())
+  // Batch 69 — KFEAT-077/088/089: routing, resolution time and satisfaction
+  priority      String    @default("normal") // low | normal | high | urgent
+  assignedToId  String?
+  resolvedAt    DateTime?
+  rating        Int?      // 1-5, set by the person who raised the ticket after it is resolved
+  ratingComment String?
+  ratedAt       DateTime?
+}
+
+model Document {
+  id            String   @id @default(cuid())
+  ownerUserId   String?
+  owner         User?    @relation(fields: [ownerUserId], references: [id])
+  applicationId String?
+  application   Application? @relation(fields: [applicationId], references: [id])
+  category      String   // id_document, certificate, policy, moU, evidence
+  fileUrl       String
+  version       Int      @default(1)
+  uploadedAt    DateTime @default(now())
+  // RG002 — admission document verification: a submitted application
+  // document (ID, KCSE certificate, etc.) sits unverified until an
+  // admissions officer actually checks it against the application.
+  verified      Boolean  @default(false)
+  verifiedById  String?
+  verifiedAt    DateTime?
+}
+
+model Notification {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  channel   String   // email | sms | push | in_app
+  title     String
+  body      String
+  sentAt    DateTime?
+  readAt    DateTime?
+  createdAt DateTime @default(now())
+}
+
+model AuditLog {
+  id         String   @id @default(cuid())
+  userId     String?
+  user       User?    @relation(fields: [userId], references: [id])
+  action     String
+  entityType String
+  entityId   String
+  metadata   Json?
+  createdAt  DateTime @default(now())
+}
+
+// ---------------------------------------------------------------------------
+// GOVERNANCE
+// ---------------------------------------------------------------------------
+
+model Meeting {
+  id           String   @id @default(cuid())
+  committee    String   // Board | Academic Board | QA Committee | Examination Board
+  title        String
+  scheduledAt  DateTime
+  status       String   @default("scheduled") // scheduled | held | cancelled
+  agendaItems  AgendaItem[]
+  minutesText  String?
+  createdAt    DateTime @default(now())
+
+  managementReviews ManagementReview[]
+
+  // Batch 53 — RG029/RG030
+  examBoardRatifications     ExamBoardRatification[]
+  academicBoardRatifications AcademicBoardRatification[]
+}
+
+// ---------------------------------------------------------------------------
+// RG029/RG030/RG036 — Examination Board, Academic Board, regulatory returns
+// ---------------------------------------------------------------------------
+
+// RG029 — Examination Board: a dedicated ratification record distinct from
+// a generic Meeting/AgendaItem resolution. Ties one unit's finalized results
+// (see lib/results-processing.ts, RG025) to the specific board meeting that
+// ratified them, capturing the pass rate *at the moment of ratification* so
+// a later results amendment (RG026) doesn't silently rewrite board history.
+model ExamBoardRatification {
+  id              String   @id @default(cuid())
+  meetingId       String
+  meeting         Meeting  @relation(fields: [meetingId], references: [id])
+  courseId        String
+  course          Course   @relation(fields: [courseId], references: [id])
+  studentsCovered Int
+  passRate        Float?
+  notes           String?
+  ratifiedById    String
+  ratifiedBy      User     @relation("ExamBoardRatifiedBy", fields: [ratifiedById], references: [id])
+  ratifiedAt      DateTime @default(now())
+
+  @@unique([meetingId, courseId])
+  @@index([courseId])
+}
+
+// RG030 — Academic Board: the institutional ratification of a graduation
+// decision for one student at one board meeting — the sign-off that sits
+// above GraduationClearance (RG017, the registrar's own eligibility check).
+// One row per student so a board deferring one student in a cohort never
+// blocks ratifying the rest. Ratifying "graduate" is a real event: it moves
+// Student.academicStatus to GRADUATED (see governance.ts).
+model AcademicBoardRatification {
+  id           String   @id @default(cuid())
+  meetingId    String
+  meeting      Meeting  @relation(fields: [meetingId], references: [id])
+  studentId    String
+  student      Student  @relation(fields: [studentId], references: [id])
+  decision     String   // graduate | defer | withhold
+  notes        String?
+  ratifiedById String
+  ratifiedBy   User     @relation("AcademicBoardRatifiedBy", fields: [ratifiedById], references: [id])
+  ratifiedAt   DateTime @default(now())
+
+  @@unique([meetingId, studentId])
+  @@index([studentId])
+}
+
+// RG036 — Government reporting: a log of regulatory data returns for any
+// regulator other than KUCCPS (which already has its own exchange-format
+// pair, KuccpsExportBatch/KuccpsImportBatch). Kept separate rather than
+// generalizing the KUCCPS models, since those two carry KUCCPS-specific
+// fields (matchedCount) that a TVETA/KNQA return has no use for.
+model RegulatoryReportBatch {
+  id            String   @id @default(cuid())
+  regulator     String   // TVETA | KNQA | CDACC | ODPC
+  reportType    String
+  recordCount   Int
+  generatedById String
+  generatedBy   User     @relation("RegulatoryReportsGenerated", fields: [generatedById], references: [id])
+  createdAt     DateTime @default(now())
+}
+
+model AgendaItem {
+  id         String   @id @default(cuid())
+  meetingId  String
+  meeting    Meeting  @relation(fields: [meetingId], references: [id])
+  title      String
+  order      Int
+  resolution String?
+  actionOwner String?
+  actionDueDate DateTime?
+  status     String   @default("open") // open | resolved | deferred
+}
+
+// ---------------------------------------------------------------------------
+// ACADEMIC INTEGRITY
+// ---------------------------------------------------------------------------
+
+model IntegrityCase {
+  id             String   @id @default(cuid())
+  submissionId   String?
+  studentId      String
+  student        Student  @relation(fields: [studentId], references: [id])
+  raisedBy       String   // AI_FLAG | TRAINER | EXAMINER
+  description    String
+  status         String   @default("under_review") // under_review | dismissed | upheld | appealed
+  sanction       String?
+  decidedById    String?
+  decidedAt      DateTime?
+  createdAt      DateTime @default(now())
+}
+
+
+
+// ---------------------------------------------------------------------------
+// QUALITY ASSURANCE / ACCREDITATION EVIDENCE
+// ---------------------------------------------------------------------------
+
+model CorrectiveAction {
+  id           String   @id @default(cuid())
+  complianceRequirementId String?
+  requirement  ComplianceRequirement? @relation(fields: [complianceRequirementId], references: [id])
+  description  String
+  assignedToId String
+  dueDate      DateTime?
+  status       String   @default("open") // open | in_progress | verified | closed
+  evidenceUrl  String?
+  createdById  String
+  createdAt    DateTime @default(now())
+}
+
+model ComplianceRequirement {
+  id               String   @id @default(cuid())
+  regulator        String   // TVETA | CUE | KUCCPS | KNQA | ODPC
+  category         String   @default("general") // general | odel | facility | ict | learner_support | assessment | course_material
+  requirement      String
+  mandatory        Boolean  @default(true)
+  status           String   @default("pending") // pending | in_progress | met | expired
+  responsibleRole  Role?
+  evidenceDocUrl   String?
+  lastReviewedAt   DateTime?
+  nextReviewDue    DateTime?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  correctiveActions CorrectiveAction[]
+  evidenceVersions  EvidenceVersion[]
+}
+
+// QA021 — evidence versioning: every time a requirement's evidence
+// document is replaced, the previous one is kept here rather than
+// overwritten — a real history, not just the current pointer.
+model EvidenceVersion {
+  id            String   @id @default(cuid())
+  requirementId String
+  requirement   ComplianceRequirement @relation(fields: [requirementId], references: [id])
+  url           String
+  uploadedById  String
+  uploadedAt    DateTime @default(now())
+}
+
+// QA005 — quality standards: institutional benchmarks the QMS is meant to
+// meet, distinct from a specific regulator's mandatory requirement
+// (ComplianceRequirement) — a standard can exist even where no regulator
+// currently mandates it.
+model QualityStandard {
+  id          String   @id @default(cuid())
+  name        String
+  description String
+  category    String?
+  createdAt   DateTime @default(now())
+}
+
+// EX004 — Learning-outcome mapping: formal model to map questions/assessments
+// to specific learning outcomes, distinct from the generic Question.topic
+model LearningOutcome {
+  id          String   @id @default(cuid())
+  unitId      String
+  unit        Unit     @relation(fields: [unitId], references: [id], onDelete: Cascade)
+  code        String   // e.g., "LO-001"
+  description String   // What the student should be able to do
+  level       String   @default("understand") // remember, understand, apply, analyze, evaluate, create
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  questions Question[]
+
+  // Batch 65 — VBI028/029: reverse sides of the Lab competency mapping.
+  vblResults VirtualLabAssessmentResult[]
+  vblCompetencyMappings IntegrationCompetencyMapping[]
+
+  @@unique([unitId, code])
+}
+
+// EX007 — Examination blueprints: template definitions for creating exams with
+// consistent structure (question distribution, difficulty levels, etc.)
+model ExamBlueprint {
+  id            String   @id @default(cuid())
+  programmeId   String
+  programme     Programme @relation(fields: [programmeId], references: [id], onDelete: Cascade)
+  name          String
+  description   String?
+  totalMarks    Int      @default(100)
+  durationMinutes Int    @default(120)
+  passMarks     Int      @default(50)
+  
+  // Structure: how many questions at each level?
+  rememberCount    Int @default(5)
+  understandCount  Int @default(10)
+  applyCount       Int @default(8)
+  analyzeCount     Int @default(5)
+  evaluateCount    Int @default(2)
+  
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  
+  assessments Assessment[] // assessments created from this blueprint
+}
+
+// QA003 — IQA (internal quality assurance) management: a self-initiated
+// internal review, distinct from the more formal InternalAudit (QA028,
+// typically external-facing) — this is the institution checking its own
+// work on a recurring internal cycle.
+model IqaReview {
+  id             String   @id @default(cuid())
+  scope          String   // what was reviewed — a unit, a programme, a department
+  reviewedById   String
+  findings       String
+  actionsRequired String?
+  reviewDate     DateTime @default(now())
+  createdAt      DateTime @default(now())
+}
+
+// QA031 — management review: the periodic review of the QMS itself (not
+// of one programme) — what was examined, what was decided, real inputs
+// and outputs, optionally tied to a Meeting record.
+model ManagementReview {
+  id              String   @id @default(cuid())
+  meetingId       String?
+  meeting         Meeting? @relation(fields: [meetingId], references: [id])
+  reviewDate      DateTime @default(now())
+  inputsSummary   String
+  decisionsSummary String
+  conductedById   String
+  createdAt       DateTime @default(now())
+}
+
+// QA035 — programme review: periodic quality review of one specific
+// programme (distinct from ManagementReview, which reviews the QMS as a
+// whole).
+model ProgrammeReview {
+  id                String   @id @default(cuid())
+  programmeId       String
+  programme         Programme @relation(fields: [programmeId], references: [id])
+  reviewedById      String
+  findings          String
+  recommendedActions String?
+  reviewDate        DateTime @default(now())
+  nextReviewDue     DateTime?
+  createdAt         DateTime @default(now())
+}
+
+// QA010 — institutional accreditation: the institution-wide status held
+// with a regulator (e.g. TVETA institutional registration, CUE charter),
+// distinct from QA009's AccreditationReview which is scored per
+// programme. Before this there was no real record here at all — just the
+// docs/regulatory-notes.md research file and whatever ComplianceRequirement
+// rows happened to exist, neither of which is an actual accreditation
+// certificate with a validity window.
+model InstitutionalAccreditation {
+  id             String   @id @default(cuid())
+  regulator      String   // TVETA | CUE | KNQA | CDACC
+  status         String   @default("pending") // pending | accredited | conditional | withdrawn | expired
+  certificateUrl String?
+  conditions     String?
+  validFrom      DateTime?
+  validUntil     DateTime?
+  recordedById   String
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+}
+
+// QA014 — course approval: a real per-course review gate, distinct from
+// QA009's programme-level accreditation. A Course could previously be
+// published by any admin-course-role user with no review step at all;
+// this gives a QA/coordinator sign-off a course can be routed through
+// before it goes live, the same submit -> decide shape as programme
+// accreditation.
+model CourseApproval {
+  id           String   @id @default(cuid())
+  courseId     String
+  course       Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  requestedById String
+  status       String   @default("pending") // pending | approved | rejected
+  notes        String?
+  reviewedById String?
+  reviewedAt   DateTime?
+  createdAt    DateTime @default(now())
+}
+
+// EX025 — external moderation: a real, distinct sign-off from an external
+// examiner (Role.EXTERNAL_EXAMINER already exists), separate from the
+// internal moderation workflow.
+model ExternalModerationReview {
+  id            String   @id @default(cuid())
+  assessmentId  String
+  assessment    Assessment @relation(fields: [assessmentId], references: [id])
+  examinerId    String
+  comments      String
+  outcome       String   @default("pending") // pending | approved | changes_requested
+  reviewedAt    DateTime @default(now())
+}
+
+// ===== BATCH 43 NEW MODELS =====
+
+// SP024 — Persistent AI Tutor: sessions store conversation history and metadata
+model TutorSession {
+  id                String   @id @default(cuid())
+  studentId         String
+  student           User     @relation("TutorSessions", fields: [studentId], references: [id], onDelete: Cascade)
+  createdAt         DateTime @default(now())
+  lastMessageAt     DateTime @default(now())
+  messagesCount     Int      @default(0)
+  sessionNotes      String?  // summary or notes by student
+  isActive          Boolean  @default(true)
+  // SP024 — which unit this session is about, so re-opening the AI Tutor
+  // for a unit resumes the right conversation instead of an undifferentiated
+  // 24-hour bucket, and so the model gets real prior-turn context.
+  unit              String?
+  difficulty        String?
+  messages          TutorMessage[]
+  
+  @@index([studentId])
+  @@index([lastMessageAt])
+  @@index([studentId, unit])
+}
+
+// EX036 — Business simulation lab. Previously simulation.ts's POST /turn was
+// entirely stateless: every turn was a one-shot AI call with no session, no
+// transcript kept, and no way for a trainer to ever see or score what a
+// student actually did in it — a "simulation assessment" in name only. This
+// gives it a real session, a persisted transcript, and a trainer-confirmed
+// score, the same shape AI033 (viva) correctly deferred building without
+// speech infrastructure this system doesn't have — but the simulation lab
+// only ever needed text, which this system already has.
+model SimulationSession {
+  id           String   @id @default(cuid())
+  studentId    String
+  student      User     @relation("SimulationSessionStudent", fields: [studentId], references: [id], onDelete: Cascade)
+  scenario     String
+  startedAt    DateTime @default(now())
+  endedAt      DateTime?
+  turns        SimulationTurn[]
+
+  // A trainer-confirmed score, deliberately never auto-computed by the AI
+  // partner itself — the same principle AI037's safety layer and AI033's
+  // human-conducted viva both rest on: an AI counterpart is a practice
+  // partner, not the assessor of its own conversation.
+  score        Float?
+  feedback     String?
+  scoredById   String?
+  scoredBy     User?    @relation("SimulationSessionScorer", fields: [scoredById], references: [id])
+  scoredAt     DateTime?
+
+  @@index([studentId])
+  @@index([scoredAt])
+}
+
+model SimulationTurn {
+  id                  String   @id @default(cuid())
+  simulationSessionId String
+  simulationSession   SimulationSession @relation(fields: [simulationSessionId], references: [id], onDelete: Cascade)
+  role                String   // student | partner (the AI counterpart)
+  content             String
+  createdAt           DateTime @default(now())
+
+  @@index([simulationSessionId])
+}
+
+model TutorMessage {
+  id             String   @id @default(cuid())
+  sessionId      String
+  session        TutorSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  role           String   // "student" | "tutor"
+  content        String
+  timestamp      DateTime @default(now())
+  
+  @@index([sessionId])
+}
+
+// LMS039 — Accessibility preferences: user-level display/readability settings
+model UserAccessibilityPreferences {
+  id                  String   @id @default(cuid())
+  userId              String   @unique
+  user                User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  fontSize            Int      @default(16)    // px: 14, 16, 18, 20
+  lineHeight          Float    @default(1.5)   // 1.5, 1.8, 2.0
+  contrastMode        String   @default("normal") // normal | high
+  dyslexiaFriendlyFont Boolean @default(false)
+  reducedMotion       Boolean  @default(false)
+  screenReaderOptimized Boolean @default(false)
+  // LMS025 — low-bandwidth mode: when true, LessonView skips autoplay,
+  // defers images/video behind a tap-to-load placeholder, and prefers a
+  // lesson's text (contentBody) over its media where both exist.
+  lowBandwidthMode    Boolean  @default(false)
+  updatedAt           DateTime @updatedAt
+  
+  @@index([userId])
+}
+
+// AD027 — Dynamic role-based permissions: extends the fixed enum with fine-grained control
+model RolePermission {
+  id            String   @id @default(cuid())
+  roleName      String   // references a real Role enum value or a custom role
+  resourceType  String   // STUDENT | COURSE | EXAM | FINANCE | ADMIN | etc.
+  action        String   // READ | WRITE | APPROVE | ADMIN | DELETE
+  isGranted     Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  
+  @@unique([roleName, resourceType, action])
+  @@index([roleName])
+}
+
+// RG008 — Credit Transfer Request workflow
+model CreditTransferRequest {
+  id                    String   @id @default(cuid())
+  studentId             String
+  student               User     @relation("CreditTransfers", fields: [studentId], references: [id], onDelete: Cascade)
+  fromUnitId            String   // unit completed elsewhere/previously
+  fromUnitName          String   // cached name
+  toUnitId              String
+  toUnit                Unit     @relation(fields: [toUnitId], references: [id])
+  requestedAt           DateTime @default(now())
+  status                String   @default("pending") // pending | approved | rejected | withdrawn
+  reviewedById          String?
+  reviewedBy            User?    @relation("CreditTransferReviews", fields: [reviewedById], references: [id])
+  reviewedAt            DateTime?
+  adminFeedback         String?
+  prerequisiteCheck     Boolean  @default(false) // true if prerequisites pass equivalence
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+  
+  @@index([studentId])
+  @@index([status])
+  @@index([toUnitId])
+}
+
+// QA009 — Programme Accreditation: formal review workflow
+model AccreditationReview {
+  id                String   @id @default(cuid())
+  programmeId       String
+  programme         Programme @relation("AccreditationReviews", fields: [programmeId], references: [id])
+  reviewerId        String
+  reviewer          User     @relation("AccreditationReviews", fields: [reviewerId], references: [id])
+  reviewDate        DateTime @default(now())
+  decision          String   @default("pending") // pending | accredited | conditional | rejected
+  feedbackSummary   String?
+  conditions        String?  // comma-separated conditions for conditional accreditation
+  validUntil        DateTime? // accreditation expiry date
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  
+  @@index([programmeId])
+  @@index([reviewerId])
+}
+
+// EX013 — Exam session security: browser/environment checks
+model ExamSessionSecurityFlag {
+  id             String   @id @default(cuid())
+  sessionId      String
+  session        ExamSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  flagType       String   // guest_mode | incognito | vm_detected | tab_switch | screen_share
+  severity       String   @default("warning") // info | warning | critical
+  details        String   // human-readable description
+  flaggedAt      DateTime @default(now())
+  reviewedBy     String?  // examiner who reviewed the flag
+  reviewedAt     DateTime?
+  
+  @@index([sessionId])
+  @@index([flaggedAt])
+}
+
+// EX016 — Batch 56: automatic, continuous activity events captured during
+// an exam attempt (tab hidden/visible, fullscreen exit, and similar),
+// distinct from the one-time ExamSessionSecurityFlag check made at
+// attempt-start. Advisory only, same as EX013/EX015 — never blocks or ends
+// an attempt by itself.
+model ExamActivityEvent {
+  id         String   @id @default(cuid())
+  sessionId  String
+  session    ExamSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  eventType  String   // tab_hidden | tab_visible | fullscreen_exit | copy | paste
+  occurredAt DateTime @default(now())
+
+  @@index([sessionId])
+  @@index([occurredAt])
+}
+
+// EX018 — Batch 56: exam-specific accessibility accommodations (distinct
+// from the general AccommodationRequest model above, which has no notion
+// of *which* assessment or *how much* extra time). Granting one here
+// actually changes the deadline computed in GET /exams/assessments/:id/take
+// and POST /exams/submissions/answers — see lib/quiz-scoring.ts's
+// attemptDeadline, which now takes an extraMinutes argument.
+model ExamAccommodation {
+  id              String   @id @default(cuid())
+  assessmentId    String
+  assessment      Assessment @relation(fields: [assessmentId], references: [id], onDelete: Cascade)
+  studentUserId   String
+  extraTimeMinutes Int     @default(0)
+  notes           String?
+  status          String   @default("approved") // approved | revoked
+  grantedById     String
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@unique([assessmentId, studentUserId])
+  @@index([assessmentId])
+}
+
+// EX034 — Batch 56: practical/competency-based assessment. TVET practical
+// assessments are conventionally scored per-criterion as
+// competent/not-yet-competent (CBET), not as marks-out-of-total the way
+// EX021's Rubric is — so this is a distinct model from Rubric rather than
+// a reuse of it. Overall outcome is computed (never separately typed) from
+// the per-criterion calls, same principle as EX021's criteriaScores.
+model PracticalChecklist {
+  id           String   @id @default(cuid())
+  assessmentId String   @unique
+  assessment   Assessment @relation(fields: [assessmentId], references: [id], onDelete: Cascade)
+  criteria     Json     // [{ name, description, mandatory: boolean }]
+  createdById  String
+  createdAt    DateTime @default(now())
+
+  results      PracticalChecklistResult[]
+}
+
+model PracticalChecklistResult {
+  id            String   @id @default(cuid())
+  checklistId   String
+  checklist     PracticalChecklist @relation(fields: [checklistId], references: [id], onDelete: Cascade)
+  submissionId  String   @unique
+  submission    Submission @relation(fields: [submissionId], references: [id], onDelete: Cascade)
+  criteriaCalls Json     // [{ name, competent: boolean, comment?: string }] — one call per checklist criterion
+  overallOutcome String  // computed: "competent" | "not_yet_competent"
+  assessedById  String
+  assessedAt    DateTime @default(now())
+}
+
+// EX032 — Similarity checking: track pairwise plagiarism analysis
+model SimilarityCheck {
+  id                    String   @id @default(cuid())
+  assessmentId          String
+  assessment            Assessment @relation(fields: [assessmentId], references: [id])
+  submissionId          String
+  submission            Submission @relation(fields: [submissionId], references: [id], onDelete: Cascade)
+  pairedSubmissionId    String? // which other submission this was compared to
+  pairedSubmission      Submission? @relation("SimilarityCheckPaired", fields: [pairedSubmissionId], references: [id], onDelete: SetNull)
+  similarityScore       Float    @default(0) // 0-100 percentage
+  overlappingSegments   String?  // JSON array: [{start: int, end: int, text: string}]
+  checkMethod          String   @default("word_overlap") // word_overlap (honest label: not semantic)
+  createdAt            DateTime @default(now())
+  reviewedBy           String?
+  reviewedAt           DateTime?
+  
+  @@unique([submissionId, pairedSubmissionId])
+  @@index([assessmentId])
+  @@index([submissionId])
+}
+
+// =========================================================================
+// BATCH 44 — NEW MODELS FOR PARTIAL FEATURES
+// =========================================================================
+
+// LMS003 — Semester Configuration: full CRUD support for semester setup
+model SemesterConfig {
+  id              String   @id @default(cuid())
+  programmeId     String
+  programme       Programme @relation("SemesterConfigs", fields: [programmeId], references: [id], onDelete: Cascade)
+  semesterNumber  Int      // 1, 2, 3, etc.
+  academicYear    String   // "2024/2025"
+  startDate       DateTime
+  endDate         DateTime
+  registrationOpen DateTime
+  registrationClose DateTime
+  assessmentStart DateTime
+  assessmentEnd   DateTime
+  resultsDueDate  DateTime
+  isActive        Boolean  @default(false)
+  createdBy       String
+  createdByUser   User     @relation("SemesterCreated", fields: [createdBy], references: [id])
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  @@unique([programmeId, semesterNumber, academicYear])
+  @@index([programmeId])
+  @@index([isActive])
+}
+
+// NOTE (Batch 45): Batch 44 introduced a second `model CourseAnnouncement`
+// here, duplicating the one already defined near `model Course` (used by
+// courses.ts and the real LMS015 announcements feature). Two models with
+// the same name fail `prisma validate` outright, and this duplicate — with
+// its own pinnedUntil/isPinned fields — was never wired to any route. It
+// has been removed; pinnedUntil/isPinned were folded into the original
+// model instead (see near `model CourseCertificate`).
+
+// LMS039 — Accessibility Settings per User
+model AccessibilityProfile {
+  id                       String   @id @default(cuid())
+  userId                   String   @unique
+  user                     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  // Vision
+  highContrast             Boolean  @default(false)
+  fontSize                 String   @default("normal") // small | normal | large | xlarge
+  dyslexiaFont             Boolean  @default(false) // OpenDyslexic or similar
+  
+  // Motor
+  largeClickTargets        Boolean  @default(false) // 48px minimum
+  reduceAnimations         Boolean  @default(false)
+  simplifiedUI             Boolean  @default(false) // remove non-essential decorations
+  
+  // Cognitive
+  readingGuide             Boolean  @default(false) // highlight current line
+  focusMode                Boolean  @default(false) // dim non-active content
+  
+  // Auditory
+  captions                 Boolean  @default(false)
+  transcript               Boolean  @default(false)
+  
+  // Applied by frontend on every render
+  customNotes              String   @db.Text // free-text accessibility notes
+  createdAt                DateTime @default(now())
+  updatedAt                DateTime @updatedAt
+}
+
+// TP011/TP012 — Builder Type on Assessments (distinguish quiz vs exam vs assignment)
+enum AssessmentBuilderType {
+  GENERIC       // generic assessment (backward compat)
+  QUIZ          // quiz builder: short, formative, auto-graded focus
+  EXAMINATION   // exam builder: summative, structured, approval workflow
+  ASSIGNMENT    // assignment: submissions, rubric-based grading
+}
+
+// AI024 — Adaptive Learning: track performance to auto-select difficulty
+model LearningAdaptation {
+  id                String   @id @default(cuid())
+  studentId         String
+  student           User     @relation("LearningAdaptations", fields: [studentId], references: [id], onDelete: Cascade)
+  unitId            String
+  unit              Unit     @relation("UnitLearningAdaptations", fields: [unitId], references: [id], onDelete: Cascade)
+  
+  currentDifficulty String   @default("intermediate") // beginner | intermediate | advanced
+  averageScoreLast5 Float    @default(0)
+  adjustedAt        DateTime @default(now())
+  adaptationRule    String?  // JSON: {score > 80 → advanced, score < 50 → beginner}
+  
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  
+  @@unique([studentId, unitId])
+  @@index([studentId])
+  @@index([unitId])
+}
+
+// RG025/RG027 — Results Processing: multi-examiner approval chain
+enum ResultsApprovalStage {
+  SUBMITTED        // trainer submitted results for approval
+  EXAMINER_1       // first examiner reviewed
+  EXAMINER_2       // second examiner (if required) reviewed
+  QA_OFFICER       // QA officer final check
+  PUBLISHED        // results published to students
+}
+
+model ResultsApprovalChain {
+  id              String   @id @default(cuid())
+  assessmentId    String
+  assessment      Assessment @relation("ResultsApprovals", fields: [assessmentId], references: [id], onDelete: Cascade)
+  
+  currentStage    String   @default("SUBMITTED") // maps to ResultsApprovalStage
+  
+  submittedBy     String   // trainer who submitted
+  submittedAt     DateTime @default(now())
+  
+  examiner1Id     String?
+  examiner1       User?    @relation("ResultsExaminer1", fields: [examiner1Id], references: [id])
+  examiner1At     DateTime?
+  examiner1Comment String?
+  
+  examiner2Id     String?
+  examiner2       User?    @relation("ResultsExaminer2", fields: [examiner2Id], references: [id])
+  examiner2At     DateTime?
+  examiner2Comment String?
+  
+  qaOfficerId     String?
+  qaOfficer       User?    @relation("ResultsQaOfficer", fields: [qaOfficerId], references: [id])
+  qaOfficerAt     DateTime?
+  qaOfficerComment String?
+  
+  isApproved      Boolean  @default(false)
+  rejectionReason String?
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  @@unique([assessmentId])
+  @@index([assessmentId])
+  @@index([currentStage])
+}
+
+// TP018 — AI Feedback Generation: track AI-generated feedback with human oversight
+model AiFeedbackSession {
+  id              String   @id @default(cuid())
+  submissionId    String
+  submission      Submission @relation("AiFeedback", fields: [submissionId], references: [id], onDelete: Cascade)
+  
+  rubricId        String?
+  rubric          Rubric?  @relation("RubricAiFeedback", fields: [rubricId], references: [id], onDelete: SetNull)
+  
+  generatedFeedback String  @db.Text // the AI-generated text
+  generatedScore  Float?   // AI-suggested score (not written to submission)
+  
+  trainerId       String   // who is reviewing
+  trainer         User     @relation("AiFeedbackReview", fields: [trainerId], references: [id])
+  
+  isAccepted      Boolean? // trainer chose to accept or reject the AI suggestion
+  acceptedAt      DateTime?
+  trainerModifications String? @db.Text // changes trainer made before publishing
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  @@index([submissionId])
+  @@index([trainerId])
+}
+
+// AD033 — Data Import: track bulk import sessions (not KUCCPS-only)
+model DataImportSession {
+  id              String   @id @default(cuid())
+  importType      String   // "students" | "kuccps" | "results" | "staff" | "courses"
+  fileName        String   // original file name
+  importedBy      String
+  importedByUser  User     @relation("DataImports", fields: [importedBy], references: [id])
+  
+  totalRows       Int      @default(0)
+  successRows     Int      @default(0)
+  errorRows       Int      @default(0)
+  
+  status          String   @default("processing") // processing | completed | failed
+  errorLog        String?  @db.Text // JSON array of row errors
+  
+  createdAt       DateTime @default(now())
+  completedAt     DateTime?
+  
+  @@index([importType])
+  @@index([status])
+}
+
+// AD010 — Programme Management: enhance Programme with builder metadata
+// (Add fields to existing Programme model via migration in real build)
+
+// ---------------------------------------------------------------------------
+// BATCH 45 ADDITIONS
+// ---------------------------------------------------------------------------
+
+// AI006 — Institutional Knowledge Base: replaces the purely static
+// curriculum.ts array as the AI tutor's grounding source with a real,
+// trainer-authored and QA-approved table. curriculum.ts stays in place as
+// the always-available fallback when a unit has no approved entries yet
+// (see lib/curriculum.ts:getKnowledgeBaseTopics) — this is a managed
+// knowledge base, not a claim of a full embeddings/RAG pipeline (that
+// remains AI007, correctly still open).
+model KnowledgeBaseEntry {
+  id           String   @id @default(cuid())
+  unitId       String
+  unit         Unit     @relation(fields: [unitId], references: [id], onDelete: Cascade)
+  title        String
+  summary      String
+  sourceRef    String   // e.g. "Financial Accounting — Module 2, Lesson 3"
+
+  isApproved   Boolean  @default(false)
+  approvedById String?
+  approvedBy   User?    @relation("KnowledgeBaseApprovals", fields: [approvedById], references: [id], onDelete: SetNull)
+  approvedAt   DateTime?
+
+  createdById  String
+  createdBy    User     @relation("KnowledgeBaseAuthored", fields: [createdById], references: [id])
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([unitId])
+  @@index([isApproved])
+}
+
+// AD027 note: RolePermission already existed in the schema going into this
+// batch but had zero routes anywhere — see routes/role-permissions.ts and
+// lib/permissions.ts for the CRUD + enforcement this batch adds.
+
+// AI005 — reuses RolePermission with resourceType "AI" (see ai.ts and
+// lib/permissions.ts) rather than a second permissions table.
+
+// ---------------------------------------------------------------------------
+// TP026 — Live teaching: real-time video sessions backed directly by a
+// BigBlueButton server's documented REST API (checksummed create/join/end
+// calls — see lib/bigbluebutton.ts). Deliberately independent of the
+// Moodle-only bigbluebuttonbn reader in moodle/liveClasses.ts, which only
+// helps MOODLE-engine courses and needs a running Moodle instance; this
+// covers CUSTOM-engine courses, which are the majority of the catalogue.
+// ---------------------------------------------------------------------------
+model LiveClassSession {
+  id                String           @id @default(cuid())
+  courseId          String
+  course            Course           @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  title             String
+  hostUserId        String
+  host              User             @relation("LiveClassHost", fields: [hostUserId], references: [id])
+  meetingId         String           @unique
+  moderatorPassword String
+  attendeePassword  String
+  scheduledAt       DateTime
+  durationMinutes   Int              @default(60)
+  status            LiveClassStatus  @default(SCHEDULED)
+  startedAt         DateTime?
+  endedAt           DateTime?
+  createdAt         DateTime         @default(now())
+
+  // TP026 — a session runs either in the built-in BigBlueButton room
+  // ("BBB", needs BBB_SERVER_URL/BBB_SHARED_SECRET) or in any external
+  // meeting the trainer already uses ("EXTERNAL": Google Meet / Zoom /
+  // Teams link). EXTERNAL needs no server-side infrastructure, so live
+  // teaching works on every deployment.
+  provider          String           @default("BBB")
+  externalUrl       String?
+  description       String?
+  recordingUrl      String?          // trainer-attached recording, shown to students after the session
+  attendanceSyncedAt DateTime?
+  attendees         LiveClassAttendee[]
+
+  @@index([courseId])
+  @@index([status])
+}
+
+// TP026 — who actually opened the join link for a session (a server-side
+// record, written when the join URL is issued), so attendance can be taken
+// from real participation instead of retyped by hand.
+model LiveClassAttendee {
+  id        String           @id @default(cuid())
+  sessionId String
+  session   LiveClassSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  userId    String
+  role      String           // host | attendee
+  joinedAt  DateTime         @default(now())
+
+  @@unique([sessionId, userId])
+  @@index([sessionId])
+}
+
+// ---------------------------------------------------------------------------
+// AD025 — GENERIC WORKFLOW ENGINE
+// ---------------------------------------------------------------------------
+// Batch 52. A real, reusable multi-stage approval engine — not another
+// hardcoded per-module chain like ResultsApprovalChain or
+// CreditTransferRequest. Any admin can define an ordered set of stages
+// (each gated to a role) once, then start real instances of it against
+// any entity, with a genuine audit trail of who acted, when, and with
+// what comment. This batch wires two real callers onto it: Programme
+// approval (AD010, via `POST /programmes/:id/approval-workflow`) can
+// optionally be routed through a defined workflow instead of a single
+// approvalStatus flip, and the new Executive Decision Centre (AD040)
+// uses it to drive cross-functional decisions to a real resolution.
+// Honest scope note: existing hardcoded chains are NOT migrated onto
+// this engine in this batch — rewriting already-working, already-tested
+// approval flows (results, credit transfer, programme accreditation)
+// onto a new generic engine is a much larger and riskier change than
+// shipping the engine itself. This ships a real, working engine plus
+// real, working new usage — not a promised migration that wasn't done.
+model WorkflowDefinition {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  category    String   @default("general") // free-text grouping, e.g. programme_approval | executive_decision | general
+  isActive    Boolean  @default(true)
+  createdById String
+  createdAt   DateTime @default(now())
+
+  stages    WorkflowStage[]
+  instances WorkflowInstance[]
+}
+
+model WorkflowStage {
+  id           String             @id @default(cuid())
+  definitionId String
+  definition   WorkflowDefinition @relation(fields: [definitionId], references: [id], onDelete: Cascade)
+  order        Int
+  name         String
+  approverRole Role               // who may approve/reject at this stage
+  createdAt    DateTime           @default(now())
+
+  @@unique([definitionId, order])
+  @@index([definitionId])
+}
+
+model WorkflowInstance {
+  id                String             @id @default(cuid())
+  definitionId      String
+  definition        WorkflowDefinition @relation(fields: [definitionId], references: [id])
+  title             String
+  entityType        String?            // free-text label of what this instance tracks, e.g. "programme"
+  entityId          String?            // id of the real record this instance is attached to, if any
+  currentStageOrder Int                @default(1)
+  status            String             @default("in_progress") // in_progress | approved | rejected | cancelled
+  startedById       String
+  startedAt         DateTime           @default(now())
+  completedAt       DateTime?
+
+  actions           WorkflowStageAction[]
+  executiveDecision ExecutiveDecision?
+
+  @@index([definitionId])
+  @@index([status])
+  @@index([entityType, entityId])
+}
+
+model WorkflowStageAction {
+  id         String           @id @default(cuid())
+  instanceId String
+  instance   WorkflowInstance @relation(fields: [instanceId], references: [id], onDelete: Cascade)
+  stageOrder Int
+  action     String           // approve | reject | comment
+  actedById  String
+  comment    String?
+  actedAt    DateTime         @default(now())
+
+  @@index([instanceId])
+}
+
+// ---------------------------------------------------------------------------
+// AD040 — EXECUTIVE DECISION CENTRE
+// ---------------------------------------------------------------------------
+// Batch 52. Turns a Command Centre alert from an ephemeral banner into a
+// real, owned, trackable record: who owns it, by when, at what priority —
+// and, for anything needing cross-functional sign-off, a real
+// WorkflowInstance (AD025) driving it to resolution instead of a single
+// person's unaudited say-so.
+model ExecutiveDecision {
+  id                 String            @id @default(cuid())
+  title              String
+  sourceAlert        String            // which Command Centre signal prompted this, kept as free text
+  rationale          String?
+  ownerId            String
+  priority           String            @default("medium") // low | medium | high
+  dueDate            DateTime?
+  status             String            @default("open")   // open | in_progress | resolved | dismissed
+  workflowInstanceId String?           @unique
+  workflowInstance   WorkflowInstance? @relation(fields: [workflowInstanceId], references: [id])
+  createdById        String
+  createdAt          DateTime          @default(now())
+  resolvedAt         DateTime?
+  outcome            String?
+
+  @@index([status])
+}
+
+// ---------------------------------------------------------------------------
+// BATCH 58 — LMS-coded completeness pass (LMS007, 019-029, 036-037 support)
+// ---------------------------------------------------------------------------
+
+// LMS021 — Learning paths: a real, ordered, programme-scoped sequence of
+// units a coordinator recommends (or requires) students follow, distinct
+// from LMS020's hard prerequisite gate — a path can suggest an order
+// without blocking registration outside it.
+model LearningPath {
+  id           String   @id @default(cuid())
+  programmeId  String
+  programme    Programme @relation(fields: [programmeId], references: [id], onDelete: Cascade)
+  title        String
+  description  String?
+  isPublished  Boolean  @default(false)
+  createdById  String
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  steps LearningPathStep[]
+
+  @@index([programmeId])
+}
+
+model LearningPathStep {
+  id           String       @id @default(cuid())
+  pathId       String
+  path         LearningPath @relation(fields: [pathId], references: [id], onDelete: Cascade)
+  unitId       String
+  unit         Unit         @relation(fields: [unitId], references: [id], onDelete: Cascade)
+  order        Int
+  isOptional   Boolean      @default(false)
+  note         String?
+
+  @@unique([pathId, unitId])
+  @@index([pathId])
+}
+
+// LMS022 — SCORM support. One package per Lesson (contentType = "scorm").
+// The uploaded zip is stored like any other MediaAsset-style upload (see
+// lib/media-storage.ts) and additionally extracted to its own directory so
+// its internal relative asset references (images/js/css inside the package)
+// resolve correctly when launched in an iframe. This is SCORM 1.2 (the
+// widely-deployed subset: LMSInitialize/GetValue/SetValue/Commit/Finish
+// against the cmi.core.* data model) — not full SCORM 2004 sequencing.
+model ScormPackage {
+  id              String   @id @default(cuid())
+  lessonId        String   @unique
+  lesson          Lesson   @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  zipStorageKey   String   // the original uploaded .zip, kept for re-extraction/audit
+  extractKey      String   @unique // directory name under UPLOAD_DIR/scorm/<extractKey>/
+  launchUrl       String   // path of the launch file, relative to the extracted directory
+  manifestTitle   String?
+  scormVersion    String   @default("1.2")
+  uploadedById    String
+  createdAt       DateTime @default(now())
+
+  attempts ScormAttempt[]
+}
+
+// One row per student per package — the live cmi.core.* state a SCORM
+// player reads on LMSInitialize and writes on LMSCommit/LMSFinish.
+model ScormAttempt {
+  id            String       @id @default(cuid())
+  packageId     String
+  package       ScormPackage @relation(fields: [packageId], references: [id], onDelete: Cascade)
+  studentId     String
+  student       Student      @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  lessonStatus  String       @default("not attempted") // passed|completed|failed|incomplete|browsed|not attempted
+  scoreRaw      Float?
+  scoreMin      Float?
+  scoreMax      Float?
+  lessonLocation String?
+  suspendData   String?      @db.Text
+  sessionTimeSeconds Int     @default(0)
+  totalTimeSeconds   Int     @default(0)
+  startedAt     DateTime     @default(now())
+  lastCommittedAt DateTime   @updatedAt
+
+  @@unique([packageId, studentId])
+  @@index([studentId])
+}
+
+// LMS023 — xAPI (Tin Can) support: a minimal, real Learning Record Store.
+// Statements are accepted in the standard actor/verb/object shape and kept
+// verbatim (raw) alongside indexed fields for querying. This is a genuine
+// statement store, not a full xAPI-conformant LRS (no /statements query
+// language, no attachments) — honest scope note, consistent with how this
+// codebase documents every other simplified-but-real feature.
+model XapiStatement {
+  id          String   @id @default(cuid())
+  actorUserId String
+  verb        String   // e.g. "experienced", "completed", "answered", "attempted"
+  objectId    String   // an IRI-like identifier — here, usually "lesson:<id>" or "scorm:<packageId>"
+  objectName  String?
+  result      Json?    // { completion?, success?, score?: { raw, min, max, scaled } }
+  context     Json?
+  raw         Json     // the full statement exactly as submitted
+  recordedAt  DateTime @default(now())
+
+  @@index([actorUserId])
+  @@index([objectId])
+}
+
+// LMS029 — time-on-task: real per-lesson time samples, sent by a heartbeat
+// from the lesson viewer (see routes/learning-analytics.ts) rather than
+// inferred from login/logout gaps. Rolled up in LMS028's analytics.
+model LessonTimeLog {
+  id         String   @id @default(cuid())
+  studentId  String
+  student    Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  lessonId   String
+  lesson     Lesson   @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  seconds    Int      // duration of this one sample (heartbeat interval, capped server-side)
+  loggedAt   DateTime @default(now())
+
+  @@index([studentId])
+  @@index([lessonId])
+}
+
+// ---------------------------------------------------------------------------
+// AI008–012 (Batch 63) — the real RAG infrastructure stack: ingestion,
+// PDF text extraction, chunking, embeddings, and vector search. Every stage
+// genuinely runs end-to-end with zero external credentials — see
+// lib/pdf-extract.ts, lib/chunking.ts, lib/embeddings.ts,
+// lib/vector-search.ts, lib/document-ingestion.ts, and the AI007–012 rows
+// in docs/feature-audit-400.md for exactly what each stage does and does
+// not do. Default embedding provider is a deterministic local sparse
+// vector (real, working lexical retrieval today); a real dense-embedding
+// provider (AI011's "openai" branch) is a documented, code-complete
+// upgrade path gated on a credential this environment doesn't have, not a
+// requirement for this to function.
+// ---------------------------------------------------------------------------
+
+// AI008 — one ingested source document (a PDF a trainer uploaded, or pasted
+// text/markdown). Keeps the full extracted text so it can be re-chunked
+// later (e.g. after a chunking-parameter change) without re-running
+// extraction. `unitId` is optional — a source can be ingested generally
+// before anyone assigns it to a specific unit.
+model KnowledgeSource {
+  id                String   @id @default(cuid())
+  unitId            String?
+  unit              Unit?    @relation(fields: [unitId], references: [id], onDelete: SetNull)
+  title             String
+  sourceType        String   // "pdf" | "text" | "markdown"
+  originalUrl       String?  // Document.fileUrl or a media-storage key this was ingested from, if any
+  rawText           String   @db.Text
+  status            String   @default("pending") // pending | ingested | failed
+  errorMessage      String?
+  charCount         Int      @default(0)
+  chunkCount        Int      @default(0)
+  embeddingProvider String   @default("local-tfidf")
+  embeddingDims     Int      @default(0)
+  uploadedById      String
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  chunks            DocumentChunk[]
+
+  @@index([unitId])
+  @@index([status])
+}
+
+// AI010/011 — one chunk of a KnowledgeSource plus its vector. The vector is
+// stored as a JSON number array rather than a native `vector` column —
+// this environment has no pgvector extension available to confirm a
+// migration against (same "unverified until first real boot" caveat every
+// schema-touching batch carries). See lib/vector-search.ts for the honest
+// note on why a linear cosine-similarity scan over this table is the
+// right call at this institution's real document volume, and what a real
+// ANN index would buy if that volume ever changes.
+model DocumentChunk {
+  id         String   @id @default(cuid())
+  sourceId   String
+  source     KnowledgeSource @relation(fields: [sourceId], references: [id], onDelete: Cascade)
+  ordinal    Int
+  text       String   @db.Text
+  charCount  Int
+  vector     Json
+  vectorDims Int
+  createdAt  DateTime @default(now())
+
+  @@index([sourceId])
+}
+
+// AI011 — embedding provider selection, same admin-editable/audited
+// singleton-row pattern AI002's AiModelConfig established. Switching
+// provider does not retroactively re-embed existing chunks (see
+// lib/document-ingestion.ts's reindexSource()) — it only changes what new
+// ingestions use, until an explicit reindex is run.
+model EmbeddingConfig {
+  id          String   @id @default("default")
+  provider    String   @default("local-tfidf") // "local-tfidf" | "openai"
+  modelId     String?  // e.g. "text-embedding-3-small", only meaningful for provider = "openai"
+  notes       String?
+  updatedById String?
+  updatedAt   DateTime @updatedAt
+}
+
+// LMS019 — completion rules: a trainer-configured threshold for what
+// "completed this course" means, read by GET /content/courses/:id/completion
+// (per-student) instead of that being an undefined, always-false concept.
+model CourseCompletionRule {
+  id                      String   @id @default(cuid())
+  courseId                String   @unique
+  course                  Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  minLessonPercent        Int      @default(100) // % of published lessons that must be marked complete
+  requirePassingAssessments Boolean @default(true) // every non-draft Assessment's best submission must be >= its passMarkPercent (or the unit's default pass mark if unset)
+  updatedById             String
+  updatedAt               DateTime @updatedAt
+}
+
+// ---------------------------------------------------------------------------
+// BATCH 64 — AI033 (AI viva), FN006 (card payment gateway), AI014 (course
+// delivery/pacing plan), EX014 (candidate admit cards). See
+// docs/progress-batch64.md for the full honest scope of each.
+// ---------------------------------------------------------------------------
+
+// AI033 — AI viva. Unlike EX035's OralAssessmentSession (a human-conducted
+// exam), this is a real, working AI-conducted oral practice/assessment
+// session: the browser's own Web Speech API (already real since AI034/035,
+// zero new infrastructure) captures the student's spoken answer as text,
+// the existing text AI gateway (callAiModel) generates the examiner's next
+// question grounded in the unit's real curriculum topics, and the browser
+// reads that question aloud again via speechSynthesis. Every turn is
+// persisted, same shape as EX036's SimulationSession/SimulationTurn. The
+// AI never scores its own viva — same human-in-the-loop principle as
+// EX036 and AI037 — a real TRAINER/EXAMINATION_OFFICER/SUPER_ADMIN
+// confirms the final score after listening to (or reading) the transcript.
+model AiVivaSession {
+  id            String   @id @default(cuid())
+  studentId     String
+  student       Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  unit          String   // unit title/code used for curriculum grounding — same free-text shape lib/curriculum.ts already takes
+  assessmentId  String?  // set when this viva is tied to a specific scheduled oral Assessment, null for open practice
+  assessment    Assessment? @relation(fields: [assessmentId], references: [id], onDelete: SetNull)
+  startedAt     DateTime @default(now())
+  endedAt       DateTime?
+  turns         AiVivaTurn[]
+
+  score         Float?
+  feedback      String?
+  scoredById    String?
+  scoredBy      User?    @relation("AiVivaSessionScorer", fields: [scoredById], references: [id])
+  scoredAt      DateTime?
+
+  @@index([studentId])
+  @@index([assessmentId])
+  @@index([scoredAt])
+}
+
+model AiVivaTurn {
+  id              String   @id @default(cuid())
+  sessionId       String
+  session         AiVivaSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  role            String   // student | examiner (the AI counterpart)
+  content         String
+  // Real, honestly-scoped provenance: was this turn actually captured via
+  // the Web Speech API (spokenInput=true) or typed as a text fallback
+  // (e.g. an unsupported browser) — never claimed as spoken if it wasn't.
+  spokenInput     Boolean  @default(false)
+  createdAt       DateTime @default(now())
+
+  @@index([sessionId])
+}
+
+// FN006/FN007 — card payment gateway. Same honesty precedent as
+// PendingMpesaPush/DARAJA_*: real request/response handling against a real
+// provider's REST API (Stripe Checkout Sessions, chosen because its API is
+// plain HTTPS+JSON, so it needs no new npm dependency), returns a clear
+// configuration error instead of a fake success when credentials aren't
+// set, and has never executed against a real key in this sandbox (no
+// network access). Set CARD_GATEWAY_SECRET_KEY / CARD_GATEWAY_WEBHOOK_SECRET
+// to go live once a real merchant account exists.
+model PendingCardCheckout {
+  id                String   @id @default(cuid())
+  checkoutSessionId String   @unique
+  invoiceId         String
+  amount            Decimal  @db.Decimal(10, 2)
+  createdAt         DateTime @default(now())
+}
+
+// AI014 — course delivery/pacing plan. The genuinely-buildable-without-new-
+// infrastructure half of "AI Teacher (full course)": sequencing and pacing
+// a whole syllabus, grounded in the course's own real Lesson rows, not an
+// autonomously-teaching agent (that would need a real tutoring engine this
+// project doesn't claim to have — the per-question tutor at /ai/tutor
+// remains the real, separate, one-exchange-at-a-time feature it always
+// was). A trainer generates a draft with AI, can edit every item, and only
+// a trainer-published plan is ever shown to students — the AI drafts, a
+// human decides, same operating principle as every other AI feature in
+// this codebase.
+model CourseDeliveryPlan {
+  id            String   @id @default(cuid())
+  courseId      String   @unique
+  course        Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  totalWeeks    Int
+  generatedAt   DateTime @default(now())
+  publishedAt   DateTime?
+  publishedById String?
+  items         CourseDeliveryPlanItem[]
+}
+
+model CourseDeliveryPlanItem {
+  id          String   @id @default(cuid())
+  planId      String
+  plan        CourseDeliveryPlan @relation(fields: [planId], references: [id], onDelete: Cascade)
+  weekNumber  Int
+  lessonId    String?  // links back to a real Lesson when the plan sequences an existing one
+  title       String
+  objective   String
+  order       Int
+
+  @@index([planId])
+}
+
+// EX014 — candidate admit cards. A real, printable/emailable card an
+// invigilator checks by eye against the student in front of them — this is
+// deliberately NOT biometric verification (see EX014's permanent-scope-
+// boundary note in feature-audit-400.md, which stays unchanged). The photo
+// is a snapshot of Student.photoDataUrl at issue time, so a later profile
+// photo change doesn't silently invalidate an already-printed card.
+model ExamAdmitCard {
+  id              String   @id @default(cuid())
+  assessmentId    String
+  assessment      Assessment @relation(fields: [assessmentId], references: [id], onDelete: Cascade)
+  studentId       String
+  student         Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  photoDataUrl    String?  @db.Text
+  documentId      String   @unique
+  signedHash      String
+  verificationUrl String
+  issuedAt        DateTime @default(now())
+
+  @@unique([assessmentId, studentId])
+  @@index([assessmentId])
+}
+
+// ---------------------------------------------------------------------------
+// VIRTUAL BUSINESS LAB (VBL) INTEGRATION — Batch 65, namespace VBI.
+// Measur Business College stays the system of record for identity, enrollment and official
+// grades; VBL stays the system of record for simulation/practical activity.
+// See docs/VBL_MAIN_PORTAL_INTEGRATION_ARCHITECTURE.md for the full design
+// and docs/VBL_MAIN_PORTAL_INTEGRATION_AUDIT.md for what this batch did and
+// did not cover. Additive only — no existing model/field above is touched.
+// ---------------------------------------------------------------------------
+
+// VBI014/017 — direction + lifecycle of one synchronization event.
+enum IntegrationDirection {
+  PORTAL_TO_VBL
+  VBL_TO_PORTAL
+}
+
+enum IntegrationEventStatus {
+  PENDING
+  PROCESSING
+  SENT // outbound: delivered and acknowledged by the other side
+  RECEIVED // inbound: processed successfully
+  FAILED
+  DEAD_LETTER
+  DUPLICATE_IGNORED
+}
+
+// VBI022/025 — a VBL assessment/competency result on its way into the
+// official gradebook. Deliberately its own model, never written directly
+// into Submission/Transcript, so a VBL score can never silently become an
+// official grade without passing through approve()/reject().
+enum LabResultStatus {
+  PENDING_APPROVAL
+  APPROVED
+  REJECTED
+  REVERSED
+}
+
+// VBI001 — Lab Identity Mapping. One row per student who has ever touched
+// the Lab; the Lab never gets to invent its own notion of who someone is.
+model IntegrationStudentMapping {
+  id               String    @id @default(cuid())
+  studentId        String    @unique
+  student          Student   @relation(fields: [studentId], references: [id])
+  labUserId        String?   @unique // VBL users.id once provisioned; null until first SSO/enrollment sync
+  labInstitutionCode String? // VBL institutions.code this student was provisioned into
+  status           String    @default("ACTIVE") // ACTIVE | SUSPENDED (mirrors Student.academicStatus at last sync)
+  lastSyncedAt     DateTime?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+}
+
+// VBI002 — Lab Staff Mapping. Same idea, for trainers.
+model IntegrationStaffMapping {
+  id               String    @id @default(cuid())
+  trainerId        String    @unique
+  trainer          Trainer   @relation(fields: [trainerId], references: [id])
+  labUserId        String?   @unique
+  labInstitutionCode String?
+  lastSyncedAt     DateTime?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+}
+
+// VBI003 — Course Mapping. Enrollment in this schema is keyed on Unit (see
+// Enrollment/Unit above), so the Lab-side counterpart of "a course" here is
+// a Unit, mapped to a VBL programme + cohort (VBL has no separate "course").
+model IntegrationCourseMapping {
+  id              String    @id @default(cuid())
+  unitId          String    @unique
+  unit            Unit      @relation(fields: [unitId], references: [id])
+  labProgrammeId  String? // VBL programmes.id
+  labCohortId     String? // VBL cohorts.id new enrollments are added to
+  labCourseCode   String? // human-readable label shown in the sync dashboard
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+}
+
+// VBI017 — Integration Event Ledger. Every attempted synchronization in
+// either direction, keyed by an idempotent eventId so a retried/duplicated
+// delivery is provably processed at most once (VBI014).
+model IntegrationEvent {
+  id             String                 @id @default(cuid())
+  eventId        String                 @unique // idempotency key, generated by the sender
+  direction      IntegrationDirection
+  eventType      String // e.g. "enrollment.created", "assessment.decided"
+  entityType     String? // e.g. "Enrollment", "VirtualLabAssessmentResult"
+  entityId       String?
+  payload        Json
+  payloadHash    String
+  status         IntegrationEventStatus @default(PENDING)
+  attempts       Int                    @default(0)
+  lastError      String?
+  processedAt    DateTime?
+  // Batch 66 — VBI015: earliest time an outbound PENDING/FAILED event may be attempted again.
+  // Doubles as a short lease while a dispatcher holds the row (see integration/events.ts
+  // claimDueEvents), so two portal instances never send the same event concurrently.
+  nextAttemptAt  DateTime?
+  createdAt      DateTime               @default(now())
+  updatedAt      DateTime               @updatedAt
+
+  @@index([status])
+  @@index([direction, status])
+  @@index([direction, status, nextAttemptAt])
+  @@index([eventType])
+}
+
+// VBI018/019/021/022 — a practical result reported by the Lab, pending the
+// portal-side human approval workflow before it can affect the official
+// gradebook (see routes/integration-vbl.ts approveLabResult / rejectLabResult).
+model VirtualLabAssessmentResult {
+  id                  String          @id @default(cuid())
+  studentId           String
+  student             Student         @relation(fields: [studentId], references: [id])
+  unitId              String
+  unit                Unit            @relation(fields: [unitId], references: [id])
+  externalAssessmentId String         @unique // VBL assessment_attempts.id
+  competencyCode      String?
+  outcome             String // COMPETENT | NOT_YET_COMPETENT (VBL's own vocabulary — see audit doc)
+  feedback            String?         @db.Text
+  assessorLabUserId   String? // VBL assessor's user id (for traceability; not necessarily a portal Trainer)
+  decidedAt           DateTime
+  status              LabResultStatus @default(PENDING_APPROVAL)
+  reviewedById        String? // portal User.id of the trainer/admin who approved/rejected
+  reviewedAt          DateTime?
+  reviewNote          String?
+  sourceEventId       String          @unique // the IntegrationEvent.eventId this came from
+  // Batch 65 — VBI020/031: an evidence *reference*, not a copy — VBL stays
+  // the system of record for the actual evidence content.
+  evidenceId          String?
+  evidenceVersion     Int?
+  evidenceSourceType  String?
+  evidenceSourceRef   String?
+  evidenceContentHash String?
+  // Batch 65 — VBI023: which earlier (immutable) result this one supersedes,
+  // when VBL reports a resubmission chain — see AssessmentService.decide's
+  // comment on why VBL amendments are always a NEW record, never a mutation.
+  supersedesResultId  String?         @unique
+  supersedes          VirtualLabAssessmentResult?  @relation("ResultChain", fields: [supersedesResultId], references: [id])
+  supersededBy        VirtualLabAssessmentResult?  @relation("ResultChain")
+  // Batch 65 — VBI024: reversal of an already-APPROVED result. Kept
+  // separate from reviewedBy/reviewedAt/reviewNote so the original
+  // approval is never overwritten — both are visible.
+  reversedById        String?
+  reversedAt          DateTime?
+  reversalReason      String?
+  // Batch 66 — VBI027: the Lab's own per-criterion met/not-met breakdown, exactly as sent
+  // ([{ code, name?, met, comment? }]). Null when the Lab sent none.
+  criteria            Json?
+  createdAt           DateTime        @default(now())
+  updatedAt           DateTime        @updatedAt
+
+  // Batch 65 — VBI028/029: which portal LearningOutcome this Lab competency
+  // maps to (looked up via IntegrationCompetencyMapping at ingest time).
+  learningOutcomeId   String?
+  learningOutcome     LearningOutcome? @relation(fields: [learningOutcomeId], references: [id])
+  // Batch 65 — VBI025/034: the Submission this APPROVED result was posted
+  // into, once posted. Null until approve() successfully posts it (e.g. no
+  // IntegrationGradebookMapping exists yet for this unit — see the audit
+  // doc), and cleared back to a zero/annotated Submission on reversal
+  // rather than deleted (grade history should never just vanish).
+  postedSubmission    Submission?
+  postedAt            DateTime?
+
+  @@index([studentId])
+  @@index([unitId])
+  @@index([status])
+}
+
+// ---------------------------------------------------------------------------
+// Batch 65 continued — VBI025/026/027: Gradebook Mapping. One VBL-enabled
+// Unit maps to exactly one Assessment "component" that an APPROVED Lab
+// result posts a score into (see routes/integration-vbl.ts postApprovedResultToGradebook).
+// Deliberately one component per unit for this batch, not a general N-component
+// weighting engine — see docs/VBL_MAIN_PORTAL_INTEGRATION_AUDIT.md for the
+// larger gradebook-weighting feature this intentionally does not attempt.
+// VBI027 (Rubric Mapping) rides along here: rubricNote is shown alongside
+// the posted score so a trainer can see how VBL's own rubric criteria
+// informed the outcome, without trying to force VBL's binary
+// COMPETENT/NOT_YET_COMPETENT criteria into the portal's numeric Rubric.criteria shape.
+// ---------------------------------------------------------------------------
+model IntegrationGradebookMapping {
+  id                          String   @id @default(cuid())
+  unitId                      String   @unique
+  unit                        Unit     @relation(fields: [unitId], references: [id])
+  assessmentId                String
+  assessment                  Assessment @relation(fields: [assessmentId], references: [id])
+  competentScorePercent       Float    @default(100)
+  notYetCompetentScorePercent Float    @default(0)
+  rubricNote                  String?  @db.Text
+  createdById                 String
+  createdAt                   DateTime @default(now())
+  updatedAt                   DateTime @updatedAt
+  rubricCriterionMappings     IntegrationRubricCriterionMapping[] // Batch 66 — VBI027
+}
+
+// VBI028/029 — Competency Mapping: which portal LearningOutcome a given VBL
+// competency code (scoped to a Unit) represents. Looked up at ingest time
+// in routeVblEvent so every VirtualLabAssessmentResult carries a real
+// LearningOutcome link, not just the raw string VBL sent.
+model IntegrationCompetencyMapping {
+  id                String          @id @default(cuid())
+  unitId            String
+  unit              Unit            @relation(fields: [unitId], references: [id])
+  labCompetencyCode String
+  learningOutcomeId String
+  learningOutcome   LearningOutcome @relation(fields: [learningOutcomeId], references: [id])
+  createdById       String
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
+
+  @@unique([unitId, labCompetencyCode])
+}
+
+// ---------------------------------------------------------------------------
+// Batch 65 continued — VBI010/045: rotating, keyed webhook credentials. A
+// direction can have more than one ACTIVE credential at once (old + new,
+// during a rotation window); dispatch/verification tries every ACTIVE
+// credential for the relevant direction. Storing the raw secret (not just a
+// hash) is required here — HMAC verification needs it — same trust model as
+// the PORTAL_WEBHOOK_SECRET/VBL_WEBHOOK_SECRET env vars this table
+// supersedes; a production deployment would keep `secret` in a KMS/secrets
+// manager rather than this column (documented limitation, not hidden).
+// ---------------------------------------------------------------------------
+enum IntegrationCredentialDirection {
+  PORTAL_TO_VBL // signs events the portal sends to VBL
+  VBL_TO_PORTAL // verifies events VBL sends to the portal
+}
+
+enum IntegrationCredentialStatus {
+  ACTIVE
+  REVOKED
+}
+
+model IntegrationCredential {
+  id          String                          @id @default(cuid())
+  keyId       String                          @unique // sent alongside the signature so the verifier knows which secret to try first
+  secret      String // see model comment — belongs in a KMS in production
+  direction   IntegrationCredentialDirection
+  status      IntegrationCredentialStatus     @default(ACTIVE)
+  createdById String
+  createdAt   DateTime                        @default(now())
+  revokedById String?
+  revokedAt   DateTime?
+  notes       String?
+
+  @@index([direction, status])
+}
+
+// ---------------------------------------------------------------------------
+// BATCH 66 — Postgres-backed replacements for what used to be in-process state,
+// plus the remaining VBL-integration gaps. Additive only.
+// ---------------------------------------------------------------------------
+
+// VBI044 — shared rate-limit store. One row per limiter key; the fixed window is reset
+// atomically in a single INSERT ... ON CONFLICT statement (integration/rate-limit.ts), so the
+// limit holds across any number of portal instances (the old limiter was a per-process Map).
+model IntegrationRateLimitBucket {
+  key         String   @id
+  count       Int      @default(0)
+  windowStart DateTime @default(now())
+
+  @@index([windowStart])
+}
+
+// VBI036 — Lab Activity Synchronization. Every activity.logged event is now stored as a
+// queryable row (previously: one audit-log line, evidence capture only). activityType is the
+// Lab's own dotted vocabulary (evidence.capture, scenario.started, transaction.posted, ...);
+// unknown types are stored as-is rather than dropped.
+model VirtualLabActivity {
+  id            String   @id @default(cuid())
+  studentId     String
+  student       Student  @relation(fields: [studentId], references: [id])
+  unitId        String?
+  unit          Unit?    @relation(fields: [unitId], references: [id])
+  activityType  String
+  entityType    String?
+  entityRef     String?
+  summary       String?
+  data          Json?
+  occurredAt    DateTime
+  sourceEventId String   @unique
+  createdAt     DateTime @default(now())
+
+  @@index([studentId, occurredAt])
+  @@index([unitId])
+  @@index([activityType])
+}
+
+// VBI027 — Rubric Mapping, criterion by criterion: which portal Rubric criterion (by its
+// name inside Rubric.criteria) a given Lab criterion code stands for, scoped to the unit's
+// gradebook mapping. Used when posting an approved result to build Submission.criteriaScores.
+model IntegrationRubricCriterionMapping {
+  id                  String                      @id @default(cuid())
+  gradebookMappingId  String
+  gradebookMapping    IntegrationGradebookMapping @relation(fields: [gradebookMappingId], references: [id], onDelete: Cascade)
+  labCriterionCode    String
+  rubricCriterionName String
+  createdById         String
+  createdAt           DateTime                    @default(now())
+  updatedAt           DateTime                    @updatedAt
+
+  @@unique([gradebookMappingId, labCriterionCode])
+}
+
+// KFX-004 / KSEC-023 — single-use password recovery tokens. Only the SHA-256 of the emailed token is stored.
+model PasswordResetToken {
+  id        String    @id @default(cuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  requestIp String?
+  createdAt DateTime  @default(now())
+
+  @@index([userId, createdAt])
+}
+
+
+// Batch 69 — KFEAT-082 / KFX-017: per-user delivery channels and muted categories.
+model NotificationPreference {
+  id              String   @id @default(cuid())
+  userId          String   @unique
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  inApp           Boolean  @default(true)
+  email           Boolean  @default(true)
+  sms             Boolean  @default(false)
+  mutedCategories String[] @default([]) // fees | logbook | announcement | academic
+  updatedAt       DateTime @updatedAt
+}
+
+// Batch 69 — KFEAT-066/070/073/059: admin-editable configuration (validated per key in lib/settings.ts).
+model SystemSetting {
+  key         String   @id
+  value       Json
+  updatedById String?
+  updatedAt   DateTime @updatedAt
+}
+
+// Batch 69 — KOBS-005/009: one row per background/maintenance job execution.
+model ScheduledJobRun {
+  id         String    @id @default(cuid())
+  job        String
+  trigger    String    @default("scheduler") // scheduler | manual
+  startedAt  DateTime  @default(now())
+  finishedAt DateTime?
+  ok         Boolean   @default(false)
+  summary    Json?
+  error      String?
+
+  @@index([job, startedAt])
+}
+
+
+// Batch 70 — KDATA-007: data-subject requests (access, correction, erasure, ...) with a response deadline.
+model DataRequest {
+  id             String    @id @default(cuid())
+  userId         String
+  user           User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type           String    // access | correction | erasure | restriction | objection
+  details        String?
+  status         String    @default("received") // received | in_progress | completed | rejected
+  dueAt          DateTime
+  handledById    String?
+  resolutionNote String?
+  createdAt      DateTime  @default(now())
+  completedAt    DateTime?
+
+  @@index([status, dueAt])
+  @@index([userId])
+}
+
+// Batch 70 — KFEAT-054 / KFX-021 / KFX-048 / KDB-010: replay store for the Idempotency-Key header.
+model IdempotencyRecord {
+  id             String   @id @default(cuid())
+  scope          String   // user id, or ip:<addr> for public forms
+  key            String
+  route          String
+  bodyHash       String
+  status         String   @default("in_progress") // in_progress | done
+  responseStatus Int?
+  responseBody   Json?
+  createdAt      DateTime @default(now())
+
+  @@unique([scope, key])
+  @@index([createdAt])
+}
+
+
+// Batch 71 — KOBS-013/017/018: incidents and planned maintenance shown to users and counted for availability.
+model ServiceNotice {
+  id          String    @id @default(cuid())
+  kind        String    // incident | maintenance
+  severity    String    @default("minor") // minor | major (major counts against availability)
+  title       String
+  message     String
+  status      String    @default("active") // active | resolved | cancelled
+  startsAt    DateTime  @default(now())
+  endsAt      DateTime? // maintenance: planned end; incident: when it was resolved
+  updates     Json      @default("[]") // [{at, by, text}]
+  createdById String
+  createdAt   DateTime  @default(now())
+
+  @@index([status, startsAt])
+}
+
+// Batch 71 — KFEAT-125: every lookup of a document ID through the public verifier (IP stored only as a keyed hash).
+model CredentialVerification {
+  id         String   @id @default(cuid())
+  documentId String
+  found      Boolean
+  revoked    Boolean  @default(false)
+  ipHash     String?
+  createdAt  DateTime @default(now())
+
+  @@index([documentId, createdAt])
+  @@index([createdAt])
+}
+
+// ---------------------------------------------------------------------------
+// BATCH 77 — LMS extras (content, gradebook, communication). All additive.
+// Plain string ids (no relations) so nothing existing has to change.
+// ---------------------------------------------------------------------------
+
+// CNT051 — a student's saved lessons.
+model LessonBookmark {
+  id            String   @id @default(cuid())
+  studentUserId String
+  lessonId      String
+  courseId      String
+  createdAt     DateTime @default(now())
+
+  @@unique([studentUserId, lessonId])
+  @@index([studentUserId, courseId])
+}
+
+// CNT052 — private notes a student keeps against a lesson.
+model LessonNote {
+  id            String   @id @default(cuid())
+  studentUserId String
+  lessonId      String
+  courseId      String
+  body          String
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @default(now()) @updatedAt
+
+  @@index([studentUserId, lessonId])
+}
+
+// CNT059 — one row per lesson open (who/when), for content view analytics.
+model LessonView {
+  id            String   @id @default(cuid())
+  userId        String
+  lessonId      String
+  courseId      String
+  viewedAt      DateTime @default(now())
+
+  @@index([courseId, viewedAt])
+  @@index([lessonId])
+}
+
+// CNT058 — one row per attachment download.
+model MaterialDownload {
+  id            String   @id @default(cuid())
+  userId        String
+  attachmentId  String?
+  assetId       String
+  courseId      String
+  downloadedAt  DateTime @default(now())
+
+  @@index([courseId, downloadedAt])
+  @@index([assetId])
+}
+
+// CNT045/025/056/057 — downloadable materials attached to a lesson.
+model LessonAttachment {
+  id           String   @id @default(cuid())
+  lessonId     String
+  courseId     String
+  assetId      String
+  label        String
+  downloadable Boolean  @default(true)
+  audience     String   @default("ENROLLED") // ENROLLED | STAFF   (CNT057)
+  version      Int      @default(1)          // bumps when the file is replaced (CNT056)
+  previousAssetIds String[] @default([])
+  createdById  String
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @default(now()) @updatedAt
+
+  @@index([lessonId])
+  @@index([courseId])
+}
+
+// CNT047 — reusable lesson templates.
+model LessonTemplate {
+  id          String   @id @default(cuid())
+  ownerUserId String
+  name        String
+  description String?
+  contentType String   @default("reading")
+  contentBody String?
+  blocks      Json?
+  shared      Boolean  @default(false)
+  createdAt   DateTime @default(now())
+
+  @@index([ownerUserId])
+}
+
+// CNT043 — reviewer feedback on a lesson (QA, coordinator or fellow trainer).
+model LessonReviewComment {
+  id         String   @id @default(cuid())
+  lessonId   String
+  courseId   String
+  authorId   String
+  body       String
+  status     String   @default("OPEN") // OPEN | RESOLVED
+  resolvedById String?
+  resolvedAt DateTime?
+  createdAt  DateTime @default(now())
+
+  @@index([lessonId])
+}
+
+// GRD005-009/016 — how much each category counts towards a course's overall grade.
+model GradeWeight {
+  id            String   @id @default(cuid())
+  courseId      String
+  category      String   // FORMATIVE_QUIZ | ASSIGNMENT | PRACTICAL | PROJECT | CAT | FINAL_EXAM
+  weightPercent Float
+  updatedById   String
+  updatedAt     DateTime @default(now()) @updatedAt
+
+  @@unique([courseId, category])
+}
+
+// COM009 — forum subscriptions (new posts notify subscribers).
+model ForumSubscription {
+  id        String   @id @default(cuid())
+  userId    String
+  forumId   String
+  createdAt DateTime @default(now())
+
+  @@unique([userId, forumId])
+}
+
+// PRG028 — an intervention a trainer opens for a student who is struggling.
+model SupportIntervention {
+  id            String   @id @default(cuid())
+  courseId      String
+  studentUserId String
+  openedById    String
+  reason        String
+  action        String?
+  status        String   @default("OPEN") // OPEN | IN_PROGRESS | CLOSED
+  outcome       String?
+  createdAt     DateTime @default(now())
+  closedAt      DateTime?
+
+  @@index([courseId, status])
+  @@index([studentUserId])
+}

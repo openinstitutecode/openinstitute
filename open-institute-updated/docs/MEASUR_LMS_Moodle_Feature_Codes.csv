@@ -1,0 +1,801 @@
+﻿Code,Module,Feature Description
+LMS-CNT-001,CNT,Trainer course creation
+LMS-CNT-002,CNT,Course title and description editor
+LMS-CNT-003,CNT,Unit and subunit creation
+LMS-CNT-004,CNT,Topic and subtopic management
+LMS-CNT-005,CNT,Rich-text lesson editor
+LMS-CNT-006,CNT,Direct typing of lesson content
+LMS-CNT-007,CNT,"Headings, paragraphs and formatting"
+LMS-CNT-008,CNT,Tables and structured content editor
+LMS-CNT-009,CNT,Mathematical formula editor
+LMS-CNT-010,CNT,Scientific symbols editor
+LMS-CNT-011,CNT,Image insertion in lessons
+LMS-CNT-012,CNT,Audio insertion
+LMS-CNT-013,CNT,Video embedding
+LMS-CNT-014,CNT,Hyperlink insertion
+LMS-CNT-015,CNT,PDF document upload
+LMS-CNT-016,CNT,Word document upload
+LMS-CNT-017,CNT,PowerPoint upload
+LMS-CNT-018,CNT,Excel document upload
+LMS-CNT-019,CNT,Text document upload
+LMS-CNT-020,CNT,Multiple-file upload
+LMS-CNT-021,CNT,Drag-and-drop document upload
+LMS-CNT-022,CNT,Document preview before publishing
+LMS-CNT-023,CNT,In-browser PDF viewer
+LMS-CNT-024,CNT,In-browser document viewer
+LMS-CNT-025,CNT,Downloadable learning materials
+LMS-CNT-026,CNT,Typed content and document combination
+LMS-CNT-027,CNT,Lesson draft saving
+LMS-CNT-028,CNT,Automatic content saving
+LMS-CNT-029,CNT,Lesson publishing
+LMS-CNT-030,CNT,Scheduled lesson publishing
+LMS-CNT-031,CNT,Lesson editing
+LMS-CNT-032,CNT,Lesson version history
+LMS-CNT-033,CNT,Restore previous lesson versions
+LMS-CNT-034,CNT,Lesson duplication
+LMS-CNT-035,CNT,Lesson deletion with recovery
+LMS-CNT-036,CNT,Lesson access restrictions
+LMS-CNT-037,CNT,Lesson prerequisites
+LMS-CNT-038,CNT,Lesson completion tracking
+LMS-CNT-039,CNT,Lesson visibility control
+LMS-CNT-040,CNT,Trainer content ownership
+LMS-CNT-041,CNT,Collaborative lesson editing
+LMS-CNT-042,CNT,Administrator content approval
+LMS-CNT-043,CNT,Content review and feedback
+LMS-CNT-044,CNT,Content change notifications
+LMS-CNT-045,CNT,Lesson attachments
+LMS-CNT-046,CNT,Learning resource library
+LMS-CNT-047,CNT,Reusable lesson templates
+LMS-CNT-048,CNT,Course content import
+LMS-CNT-049,CNT,SCORM content support
+LMS-CNT-050,CNT,H5P interactive content support
+LMS-CNT-051,CNT,Lesson bookmarking
+LMS-CNT-052,CNT,Student lesson notes
+LMS-CNT-053,CNT,Lesson search
+LMS-CNT-054,CNT,Content categorization
+LMS-CNT-055,CNT,Content tagging
+LMS-CNT-056,CNT,Learning material replacement
+LMS-CNT-057,CNT,File access permission management
+LMS-CNT-058,CNT,Content download tracking
+LMS-CNT-059,CNT,Content view analytics
+LMS-CNT-060,CNT,Course content export
+LMS-QZ-001,QZ,Quiz creation dashboard
+LMS-QZ-002,QZ,Quiz title and description
+LMS-QZ-003,QZ,Quiz instructions editor
+LMS-QZ-004,QZ,Quiz linked to course and unit
+LMS-QZ-005,QZ,Quiz question editor
+LMS-QZ-006,QZ,Multiple-choice questions
+LMS-QZ-007,QZ,Single-answer questions
+LMS-QZ-008,QZ,Multiple-correct-answer questions
+LMS-QZ-009,QZ,True-or-false questions
+LMS-QZ-010,QZ,Fill-in-the-blank questions
+LMS-QZ-011,QZ,Short-answer questions
+LMS-QZ-012,QZ,Numerical questions
+LMS-QZ-013,QZ,Matching questions
+LMS-QZ-014,QZ,Ordering and sequencing questions
+LMS-QZ-015,QZ,Essay questions
+LMS-QZ-016,QZ,Image-based questions
+LMS-QZ-017,QZ,Audio-based questions
+LMS-QZ-018,QZ,Video-based questions
+LMS-QZ-019,QZ,Case-study questions
+LMS-QZ-020,QZ,Scenario-based questions
+LMS-QZ-021,QZ,Practical competency questions
+LMS-QZ-022,QZ,Question-specific marks
+LMS-QZ-023,QZ,Correct-answer selection
+LMS-QZ-024,QZ,Multiple accepted answers
+LMS-QZ-025,QZ,Partial-credit marking
+LMS-QZ-026,QZ,Negative marking configuration
+LMS-QZ-027,QZ,Answer-specific feedback
+LMS-QZ-028,QZ,Explanation for correct answers
+LMS-QZ-029,QZ,Explanation for incorrect answers
+LMS-QZ-030,QZ,Question difficulty classification
+LMS-QZ-031,QZ,"Easy, intermediate and advanced categories"
+LMS-QZ-032,QZ,Question categorization by topic
+LMS-QZ-033,QZ,Question bank
+LMS-QZ-034,QZ,Reusable questions
+LMS-QZ-035,QZ,Random question selection
+LMS-QZ-036,QZ,Randomized answer options
+LMS-QZ-037,QZ,Question shuffling
+LMS-QZ-038,QZ,Question duplication
+LMS-QZ-039,QZ,Question editing
+LMS-QZ-040,QZ,Question version history
+LMS-QZ-041,QZ,Question import
+LMS-QZ-042,QZ,Bulk question creation
+LMS-QZ-043,QZ,Question export
+LMS-QZ-044,QZ,Question preview
+LMS-QZ-045,QZ,Quiz preview as student
+LMS-QZ-046,QZ,Quiz time limit
+LMS-QZ-047,QZ,Quiz opening date
+LMS-QZ-048,QZ,Quiz closing date
+LMS-QZ-049,QZ,Attempts allowed
+LMS-QZ-050,QZ,Retake configuration
+LMS-QZ-051,QZ,Highest-attempt grading
+LMS-QZ-052,QZ,Average-attempt grading
+LMS-QZ-053,QZ,Latest-attempt grading
+LMS-QZ-054,QZ,Pass mark configuration
+LMS-QZ-055,QZ,Maximum quiz marks
+LMS-QZ-056,QZ,Question-per-page configuration
+LMS-QZ-057,QZ,One-question-at-a-time mode
+LMS-QZ-058,QZ,Quiz navigation controls
+LMS-QZ-059,QZ,Student answer review
+LMS-QZ-060,QZ,Auto-save student answers
+LMS-QZ-061,QZ,Automatic quiz submission
+LMS-QZ-062,QZ,Time-expiry handling
+LMS-QZ-063,QZ,Immediate marking
+LMS-QZ-064,QZ,Deferred marking
+LMS-QZ-065,QZ,Automatic objective-question marking
+LMS-QZ-066,QZ,Manual essay marking
+LMS-QZ-067,QZ,Manual regrading
+LMS-QZ-068,QZ,Automatic regrading
+LMS-QZ-069,QZ,Quiz result publication
+LMS-QZ-070,QZ,Delayed answer-key release
+LMS-QZ-071,QZ,Result visibility control
+LMS-QZ-072,QZ,Individual quiz feedback
+LMS-QZ-073,QZ,Quiz performance analytics
+LMS-QZ-074,QZ,Quiz attempt history
+LMS-QZ-075,QZ,Student quiz review
+LMS-QZ-076,QZ,Trainer quiz statistics
+LMS-QZ-077,QZ,Question performance analytics
+LMS-QZ-078,QZ,Question error reporting
+LMS-QZ-079,QZ,Quiz availability by student group
+LMS-QZ-080,QZ,Quiz accommodations and approved extensions
+LMS-EXM-001,EXM,Examination creation
+LMS-EXM-002,EXM,Examination timetable
+LMS-EXM-003,EXM,Examination calendar
+LMS-EXM-004,EXM,Examination registration
+LMS-EXM-005,EXM,Examination eligibility checking
+LMS-EXM-006,EXM,Course-based examination assignment
+LMS-EXM-007,EXM,Unit-based examinations
+LMS-EXM-008,EXM,Continuous assessment tests
+LMS-EXM-009,EXM,Midterm examinations
+LMS-EXM-010,EXM,End-of-term examinations
+LMS-EXM-011,EXM,Mock examinations
+LMS-EXM-012,EXM,Supplementary examination configuration
+LMS-EXM-013,EXM,Special examination scheduling
+LMS-EXM-014,EXM,Examination paper editor
+LMS-EXM-015,EXM,Examination document upload
+LMS-EXM-016,EXM,Examination question bank
+LMS-EXM-017,EXM,Examination blueprint
+LMS-EXM-018,EXM,Learning outcome mapping
+LMS-EXM-019,EXM,Competency-based assessment mapping
+LMS-EXM-020,EXM,Examination section configuration
+LMS-EXM-021,EXM,Section-based marks
+LMS-EXM-022,EXM,Examination time limits
+LMS-EXM-023,EXM,Examination access windows
+LMS-EXM-024,EXM,Examination attempt limits
+LMS-EXM-025,EXM,Randomized examination questions
+LMS-EXM-026,EXM,Randomized examination versions
+LMS-EXM-027,EXM,Examination instructions
+LMS-EXM-028,EXM,Examination preview
+LMS-EXM-029,EXM,Examination approval workflow
+LMS-EXM-030,EXM,Examination publishing
+LMS-EXM-031,EXM,Examination access control
+LMS-EXM-032,EXM,Approved extra-time settings
+LMS-EXM-033,EXM,Examination autosave
+LMS-EXM-034,EXM,Examination submission tracking
+LMS-EXM-035,EXM,Interrupted-attempt recovery
+LMS-EXM-036,EXM,Examination marking
+LMS-EXM-037,EXM,Examination moderation
+LMS-EXM-038,EXM,Examination result approval
+LMS-EXM-039,EXM,Examination result release
+LMS-EXM-040,EXM,Examination result analytics
+LMS-EXM-041,EXM,Examination scripts archive
+LMS-EXM-042,EXM,Examination audit trail
+LMS-EXM-043,EXM,Examination incident reporting
+LMS-EXM-044,EXM,Examination rescheduling
+LMS-EXM-045,EXM,Examination report generation
+LMS-ASG-001,ASG,Assignment creation
+LMS-ASG-002,ASG,Assignment instructions
+LMS-ASG-003,ASG,Assignment linked to units
+LMS-ASG-004,ASG,Assignment deadlines
+LMS-ASG-005,ASG,Scheduled assignment release
+LMS-ASG-006,ASG,Individual assignments
+LMS-ASG-007,ASG,Group assignments
+LMS-ASG-008,ASG,Online text submissions
+LMS-ASG-009,ASG,File submissions
+LMS-ASG-010,ASG,Multiple-file submissions
+LMS-ASG-011,ASG,PDF submissions
+LMS-ASG-012,ASG,Document submissions
+LMS-ASG-013,ASG,Spreadsheet submissions
+LMS-ASG-014,ASG,Presentation submissions
+LMS-ASG-015,ASG,Audio and video submissions
+LMS-ASG-016,ASG,Practical evidence submissions
+LMS-ASG-017,ASG,Assignment draft saving
+LMS-ASG-018,ASG,Submission confirmation
+LMS-ASG-019,ASG,Late submission configuration
+LMS-ASG-020,ASG,Late submission tracking
+LMS-ASG-021,ASG,Extension requests
+LMS-ASG-022,ASG,Trainer-approved extensions
+LMS-ASG-023,ASG,Resubmission configuration
+LMS-ASG-024,ASG,Submission version history
+LMS-ASG-025,ASG,Bulk submission download
+LMS-ASG-026,ASG,Inline document marking
+LMS-ASG-027,ASG,Assignment grading
+LMS-ASG-028,ASG,Rubric-based grading
+LMS-ASG-029,ASG,Competency-based grading
+LMS-ASG-030,ASG,Numerical marking
+LMS-ASG-031,ASG,Written feedback
+LMS-ASG-032,ASG,Audio feedback
+LMS-ASG-033,ASG,Video feedback
+LMS-ASG-034,ASG,Annotated document feedback
+LMS-ASG-035,ASG,Assignment moderation
+LMS-ASG-036,ASG,Assignment resubmission review
+LMS-ASG-037,ASG,Assignment grade publication
+LMS-ASG-038,ASG,Assignment performance analytics
+LMS-ASG-039,ASG,Plagiarism-checking integration
+LMS-ASG-040,ASG,Assignment archive
+LMS-STU-001,STU,Personalized student dashboard
+LMS-STU-002,STU,Enrolled course display
+LMS-STU-003,STU,Course unit navigation
+LMS-STU-004,STU,Lesson access
+LMS-STU-005,STU,PDF reading interface
+LMS-STU-006,STU,Document viewing
+LMS-STU-007,STU,Learning material downloads
+LMS-STU-008,STU,Video lesson playback
+LMS-STU-009,STU,Audio lesson playback
+LMS-STU-010,STU,Interactive lesson viewer
+LMS-STU-011,STU,Course announcements
+LMS-STU-012,STU,Learning calendar
+LMS-STU-013,STU,Upcoming assessments
+LMS-STU-014,STU,Upcoming assignment deadlines
+LMS-STU-015,STU,Quiz availability display
+LMS-STU-016,STU,Examination timetable
+LMS-STU-017,STU,Online quiz participation
+LMS-STU-018,STU,Online examination participation
+LMS-STU-019,STU,Assignment submission
+LMS-STU-020,STU,Assignment submission history
+LMS-STU-021,STU,Personal study notes
+LMS-STU-022,STU,Lesson bookmarking
+LMS-STU-023,STU,Lesson completion indicators
+LMS-STU-024,STU,Course progress tracking
+LMS-STU-025,STU,Unit completion tracking
+LMS-STU-026,STU,Assessment marks display
+LMS-STU-027,STU,Gradebook access
+LMS-STU-028,STU,Assessment feedback viewing
+LMS-STU-029,STU,Quiz answer review
+LMS-STU-030,STU,Examination results viewing
+LMS-STU-031,STU,Academic progress visualization
+LMS-STU-032,STU,Competency achievement tracking
+LMS-STU-033,STU,Learning outcome progress
+LMS-STU-034,STU,Personal learning goals
+LMS-STU-035,STU,Study reminders
+LMS-STU-036,STU,Course discussion access
+LMS-STU-037,STU,Trainer messaging
+LMS-STU-038,STU,Peer collaboration
+LMS-STU-039,STU,Question and answer forum
+LMS-STU-040,STU,Student support requests
+LMS-STU-041,STU,Learning resource search
+LMS-STU-042,STU,Recently accessed lessons
+LMS-STU-043,STU,Continue learning feature
+LMS-STU-044,STU,Low-bandwidth learning mode
+LMS-STU-045,STU,Mobile-responsive learning
+LMS-STU-046,STU,Offline resource access
+LMS-STU-047,STU,Offline activity synchronization
+LMS-STU-048,STU,Accessibility preferences
+LMS-STU-049,STU,Language preferences
+LMS-STU-050,STU,Personal learning activity history
+LMS-STU-051,STU,Achievement badges
+LMS-STU-052,STU,Course completion certificates
+LMS-STU-053,STU,Academic transcript integration
+LMS-STU-054,STU,Student learning analytics
+LMS-STU-055,STU,Student course feedback
+LMS-TRN-001,TRN,Trainer dashboard
+LMS-TRN-002,TRN,Assigned courses
+LMS-TRN-003,TRN,Course creation requests
+LMS-TRN-004,TRN,Student roster
+LMS-TRN-005,TRN,Student profile access
+LMS-TRN-006,TRN,Class grouping
+LMS-TRN-007,TRN,Tutorial group management
+LMS-TRN-008,TRN,Student enrollment overview
+LMS-TRN-009,TRN,Attendance recording
+LMS-TRN-010,TRN,Live attendance tracking
+LMS-TRN-011,TRN,Lesson creation
+LMS-TRN-012,TRN,Course content editing
+LMS-TRN-013,TRN,Resource management
+LMS-TRN-014,TRN,Quiz management
+LMS-TRN-015,TRN,Examination management
+LMS-TRN-016,TRN,Assignment management
+LMS-TRN-017,TRN,Assessment marking dashboard
+LMS-TRN-018,TRN,Bulk grading
+LMS-TRN-019,TRN,Rubric management
+LMS-TRN-020,TRN,Gradebook management
+LMS-TRN-021,TRN,Grade correction requests
+LMS-TRN-022,TRN,Student performance monitoring
+LMS-TRN-023,TRN,Student engagement analytics
+LMS-TRN-024,TRN,At-risk student identification
+LMS-TRN-025,TRN,Individual learner reports
+LMS-TRN-026,TRN,Class performance reports
+LMS-TRN-027,TRN,Course announcements
+LMS-TRN-028,TRN,Class messaging
+LMS-TRN-029,TRN,Discussion moderation
+LMS-TRN-030,TRN,Live lesson scheduling
+LMS-TRN-031,TRN,Live classroom management
+LMS-TRN-032,TRN,Student consultation scheduling
+LMS-TRN-033,TRN,Academic intervention records
+LMS-TRN-034,TRN,Course completion monitoring
+LMS-TRN-035,TRN,Learning outcome assessment
+LMS-TRN-036,TRN,Competency evidence review
+LMS-TRN-037,TRN,Course content approval tracking
+LMS-TRN-038,TRN,Course resource sharing
+LMS-TRN-039,TRN,Course duplication
+LMS-TRN-040,TRN,Course archive access
+LMS-TRN-041,TRN,Teaching workload overview
+LMS-TRN-042,TRN,Trainer activity reports
+LMS-TRN-043,TRN,Student support referrals
+LMS-TRN-044,TRN,Trainer calendar
+LMS-TRN-045,TRN,Trainer notification center
+LMS-MDL-001,MDL,Moodle connection configuration
+LMS-MDL-002,MDL,Moodle instance registration
+LMS-MDL-003,MDL,Secure API integration
+LMS-MDL-004,MDL,Moodle web service configuration
+LMS-MDL-005,MDL,API authentication
+LMS-MDL-006,MDL,Moodle health monitoring
+LMS-MDL-007,MDL,Moodle connection status
+LMS-MDL-008,MDL,Moodle course creation
+LMS-MDL-009,MDL,Course mapping between platforms
+LMS-MDL-010,MDL,Unit mapping
+LMS-MDL-011,MDL,Student account mapping
+LMS-MDL-012,MDL,Trainer account mapping
+LMS-MDL-013,MDL,Single sign-on integration
+LMS-MDL-014,MDL,Centralized access management
+LMS-MDL-015,MDL,Student enrollment synchronization
+LMS-MDL-016,MDL,Student unenrollment synchronization
+LMS-MDL-017,MDL,Trainer enrollment synchronization
+LMS-MDL-018,MDL,Moodle course content access
+LMS-MDL-019,MDL,Moodle lesson synchronization
+LMS-MDL-020,MDL,Moodle resource synchronization
+LMS-MDL-021,MDL,Moodle file reference synchronization
+LMS-MDL-022,MDL,Moodle quiz integration
+LMS-MDL-023,MDL,Moodle question bank integration
+LMS-MDL-024,MDL,Moodle examination integration
+LMS-MDL-025,MDL,Moodle assignment integration
+LMS-MDL-026,MDL,Moodle submission status synchronization
+LMS-MDL-027,MDL,Moodle grade synchronization
+LMS-MDL-028,MDL,Moodle gradebook mapping
+LMS-MDL-029,MDL,Assessment category mapping
+LMS-MDL-030,MDL,Grade weighting synchronization
+LMS-MDL-031,MDL,Assessment attempt tracking
+LMS-MDL-032,MDL,Quiz completion synchronization
+LMS-MDL-033,MDL,Assignment completion synchronization
+LMS-MDL-034,MDL,Course completion synchronization
+LMS-MDL-035,MDL,Competency completion synchronization
+LMS-MDL-036,MDL,Moodle feedback synchronization
+LMS-MDL-037,MDL,Moodle activity tracking
+LMS-MDL-038,MDL,Moodle announcement integration
+LMS-MDL-039,MDL,Moodle calendar integration
+LMS-MDL-040,MDL,Moodle notification integration
+LMS-MDL-041,MDL,Moodle discussion integration
+LMS-MDL-042,MDL,Moodle attendance integration
+LMS-MDL-043,MDL,Moodle H5P integration
+LMS-MDL-044,MDL,Moodle SCORM integration
+LMS-MDL-045,MDL,Moodle LTI integration
+LMS-MDL-046,MDL,Moodle data import
+LMS-MDL-047,MDL,Moodle data export
+LMS-MDL-048,MDL,Moodle backup tracking
+LMS-MDL-049,MDL,Moodle synchronization queue
+LMS-MDL-050,MDL,Automatic retry on synchronization failure
+LMS-MDL-051,MDL,Duplicate synchronization prevention
+LMS-MDL-052,MDL,Synchronization conflict resolution
+LMS-MDL-053,MDL,Synchronization audit log
+LMS-MDL-054,MDL,Moodle integration error reporting
+LMS-MDL-055,MDL,Manual synchronization controls
+LMS-MDL-056,MDL,Scheduled synchronization
+LMS-MDL-057,MDL,Event-driven synchronization
+LMS-MDL-058,MDL,Synchronization dashboard
+LMS-MDL-059,MDL,Integration permission controls
+LMS-MDL-060,MDL,Moodle integration analytics
+LMS-ADM-001,ADM,Central LMS administration dashboard
+LMS-ADM-002,ADM,Course creation and management
+LMS-ADM-003,ADM,Course approval
+LMS-ADM-004,ADM,Course allocation to departments
+LMS-ADM-005,ADM,Unit and curriculum management
+LMS-ADM-006,ADM,Academic year configuration
+LMS-ADM-007,ADM,Semester management
+LMS-ADM-008,ADM,Academic calendar
+LMS-ADM-009,ADM,Trainer account management
+LMS-ADM-010,ADM,Trainer verification
+LMS-ADM-011,ADM,Trainer course allocation
+LMS-ADM-012,ADM,Student enrollment management
+LMS-ADM-013,ADM,Student course allocation
+LMS-ADM-014,ADM,Bulk student enrollment
+LMS-ADM-015,ADM,Bulk trainer allocation
+LMS-ADM-016,ADM,Student group management
+LMS-ADM-017,ADM,Department management
+LMS-ADM-018,ADM,Faculty management
+LMS-ADM-019,ADM,Academic program management
+LMS-ADM-020,ADM,Curriculum version management
+LMS-ADM-021,ADM,Course content approval
+LMS-ADM-022,ADM,Assessment approval
+LMS-ADM-023,ADM,Examination approval
+LMS-ADM-024,ADM,Assessment moderation assignment
+LMS-ADM-025,ADM,Academic results approval
+LMS-ADM-026,ADM,Grade change authorization
+LMS-ADM-027,ADM,Grade correction audit
+LMS-ADM-028,ADM,Course progress monitoring
+LMS-ADM-029,ADM,Student academic activity monitoring
+LMS-ADM-030,ADM,Trainer activity monitoring
+LMS-ADM-031,ADM,LMS configuration
+LMS-ADM-032,ADM,Assessment policy configuration
+LMS-ADM-033,ADM,Grading scale configuration
+LMS-ADM-034,ADM,Pass mark configuration
+LMS-ADM-035,ADM,Course completion rules
+LMS-ADM-036,ADM,Student access permissions
+LMS-ADM-037,ADM,Trainer access permissions
+LMS-ADM-038,ADM,Administrator role management
+LMS-ADM-039,ADM,Permission audit trail
+LMS-ADM-040,ADM,LMS-wide announcements
+LMS-ADM-041,ADM,LMS notification management
+LMS-ADM-042,ADM,Content storage management
+LMS-ADM-043,ADM,File size and type restrictions
+LMS-ADM-044,ADM,Moodle integration administration
+LMS-ADM-045,ADM,LMS backup management
+LMS-ADM-046,ADM,LMS system health dashboard
+LMS-ADM-047,ADM,LMS error monitoring
+LMS-ADM-048,ADM,LMS usage analytics
+LMS-ADM-049,ADM,Academic performance reports
+LMS-ADM-050,ADM,LMS maintenance mode
+LMS-ADM-051,ADM,Archived course management
+LMS-ADM-052,ADM,Course restoration
+LMS-ADM-053,ADM,Student learning access review
+LMS-ADM-054,ADM,Academic audit reports
+LMS-ADM-055,ADM,Data retention configuration
+LMS-REG-001,REG,Registrar LMS dashboard
+LMS-REG-002,REG,Registered student verification
+LMS-REG-003,REG,Academic program verification
+LMS-REG-004,REG,Registered unit verification
+LMS-REG-005,REG,Student course eligibility
+LMS-REG-006,REG,Semester registration synchronization
+LMS-REG-007,REG,Course enrollment reconciliation
+LMS-REG-008,REG,Examination eligibility synchronization
+LMS-REG-009,REG,Continuous assessment records
+LMS-REG-010,REG,Examination marks synchronization
+LMS-REG-011,REG,Grade validation
+LMS-REG-012,REG,Grade approval workflow
+LMS-REG-013,REG,Grade moderation records
+LMS-REG-014,REG,Academic progression calculations
+LMS-REG-015,REG,Unit completion records
+LMS-REG-016,REG,Course completion records
+LMS-REG-017,REG,Competency achievement records
+LMS-REG-018,REG,Academic transcript synchronization
+LMS-REG-019,REG,Missing marks detection
+LMS-REG-020,REG,Unregistered unit assessment detection
+LMS-REG-021,REG,Result amendment requests
+LMS-REG-022,REG,Results release authorization
+LMS-REG-023,REG,Academic performance reports
+LMS-REG-024,REG,Graduation eligibility data
+LMS-REG-025,REG,Academic records audit trail
+LMS-LIB-001,LIB,Integrated digital library
+LMS-LIB-002,LIB,Library resource catalog
+LMS-LIB-003,LIB,Academic book catalog
+LMS-LIB-004,LIB,E-book integration
+LMS-LIB-005,LIB,Academic journal integration
+LMS-LIB-006,LIB,Research paper integration
+LMS-LIB-007,LIB,Open educational resource integration
+LMS-LIB-008,LIB,Library API integration
+LMS-LIB-009,LIB,Library resource search
+LMS-LIB-010,LIB,Search by course
+LMS-LIB-011,LIB,Search by unit
+LMS-LIB-012,LIB,Search by author
+LMS-LIB-013,LIB,Search by ISBN
+LMS-LIB-014,LIB,Search by subject
+LMS-LIB-015,LIB,Search by publication year
+LMS-LIB-016,LIB,Academic resource categorization
+LMS-LIB-017,LIB,Trainer resource recommendations
+LMS-LIB-018,LIB,Lesson-linked references
+LMS-LIB-019,LIB,Course reading lists
+LMS-LIB-020,LIB,Recommended textbooks
+LMS-LIB-021,LIB,Digital reading interface
+LMS-LIB-022,LIB,PDF reader
+LMS-LIB-023,LIB,Book bookmarking
+LMS-LIB-024,LIB,Personal reading notes
+LMS-LIB-025,LIB,Reading progress tracking
+LMS-LIB-026,LIB,Student resource collections
+LMS-LIB-027,LIB,Library access permissions
+LMS-LIB-028,LIB,Licensed resource access controls
+LMS-LIB-029,LIB,Library usage analytics
+LMS-LIB-030,LIB,Library resource availability monitoring
+LMS-LIB-031,LIB,Citation and reference tools
+LMS-LIB-032,LIB,Bibliography generation
+LMS-LIB-033,LIB,Trainer-curated resource lists
+LMS-LIB-034,LIB,Resource sharing within courses
+LMS-LIB-035,LIB,Library resource reporting
+LMS-LIVE-001,LIVE,Live classroom dashboard
+LMS-LIVE-002,LIVE,Live lesson scheduling
+LMS-LIVE-003,LIVE,Video conferencing integration
+LMS-LIVE-004,LIVE,Trainer live classroom creation
+LMS-LIVE-005,LIVE,Student classroom joining
+LMS-LIVE-006,LIVE,Live attendance tracking
+LMS-LIVE-007,LIVE,Interactive whiteboard
+LMS-LIVE-008,LIVE,Screen sharing
+LMS-LIVE-009,LIVE,Presentation sharing
+LMS-LIVE-010,LIVE,Live text chat
+LMS-LIVE-011,LIVE,Question and answer sessions
+LMS-LIVE-012,LIVE,Hand-raising functionality
+LMS-LIVE-013,LIVE,Polls during lessons
+LMS-LIVE-014,LIVE,Live quizzes
+LMS-LIVE-015,LIVE,Breakout rooms
+LMS-LIVE-016,LIVE,Group discussions
+LMS-LIVE-017,LIVE,Session recording
+LMS-LIVE-018,LIVE,Recording access permissions
+LMS-LIVE-019,LIVE,Recording library
+LMS-LIVE-020,LIVE,Attendance reports
+LMS-LIVE-021,LIVE,Live classroom notifications
+LMS-LIVE-022,LIVE,Trainer consultation sessions
+LMS-LIVE-023,LIVE,Virtual office hours
+LMS-LIVE-024,LIVE,Live session calendar
+LMS-LIVE-025,LIVE,Low-bandwidth video options
+LMS-LIVE-026,LIVE,Live session feedback
+LMS-LIVE-027,LIVE,Live lesson analytics
+LMS-LIVE-028,LIVE,Session replay
+LMS-LIVE-029,LIVE,Live lesson resource sharing
+LMS-LIVE-030,LIVE,Moodle live classroom integration
+LMS-COM-001,COM,Course discussion forums
+LMS-COM-002,COM,Unit discussion forums
+LMS-COM-003,COM,Topic-based discussions
+LMS-COM-004,COM,Trainer announcements
+LMS-COM-005,COM,Student discussion threads
+LMS-COM-006,COM,Student replies
+LMS-COM-007,COM,Discussion moderation
+LMS-COM-008,COM,Discussion search
+LMS-COM-009,COM,Forum subscriptions
+LMS-COM-010,COM,Direct trainer messaging
+LMS-COM-011,COM,Student-to-student messaging
+LMS-COM-012,COM,Group messaging
+LMS-COM-013,COM,Course-wide notifications
+LMS-COM-014,COM,Email notifications
+LMS-COM-015,COM,In-platform notifications
+LMS-COM-016,COM,Mobile notifications
+LMS-COM-017,COM,Assessment reminders
+LMS-COM-018,COM,Assignment deadline reminders
+LMS-COM-019,COM,New content notifications
+LMS-COM-020,COM,Results release notifications
+LMS-COM-021,COM,Scheduled notifications
+LMS-COM-022,COM,Notification preferences
+LMS-COM-023,COM,Student feedback surveys
+LMS-COM-024,COM,Trainer feedback surveys
+LMS-COM-025,COM,Student engagement reporting
+LMS-COM-026,COM,Academic support requests
+LMS-COM-027,COM,Frequently asked questions
+LMS-COM-028,COM,Peer learning groups
+LMS-COM-029,COM,Collaborative workspaces
+LMS-COM-030,COM,Communication history
+LMS-GRD-001,GRD,Central gradebook
+LMS-GRD-002,GRD,Course gradebook
+LMS-GRD-003,GRD,Unit gradebook
+LMS-GRD-004,GRD,Student individual gradebook
+LMS-GRD-005,GRD,Assessment category creation
+LMS-GRD-006,GRD,Continuous assessment weighting
+LMS-GRD-007,GRD,Examination weighting
+LMS-GRD-008,GRD,Assignment weighting
+LMS-GRD-009,GRD,Practical assessment weighting
+LMS-GRD-010,GRD,Custom grading scales
+LMS-GRD-011,GRD,Percentage-based grading
+LMS-GRD-012,GRD,Numerical grading
+LMS-GRD-013,GRD,Letter grading
+LMS-GRD-014,GRD,Competency-based grading
+LMS-GRD-015,GRD,Automated grade calculations
+LMS-GRD-016,GRD,Weighted grade calculations
+LMS-GRD-017,GRD,Missing grade detection
+LMS-GRD-018,GRD,Incomplete assessment detection
+LMS-GRD-019,GRD,Grade import
+LMS-GRD-020,GRD,Grade export
+LMS-GRD-021,GRD,Moodle grade synchronization
+LMS-GRD-022,GRD,Virtual Business Lab grade synchronization
+LMS-GRD-023,GRD,Grade change history
+LMS-GRD-024,GRD,Grade correction workflow
+LMS-GRD-025,GRD,Grade approval workflow
+LMS-GRD-026,GRD,Grade moderation
+LMS-GRD-027,GRD,Grade publication control
+LMS-GRD-028,GRD,Student grade visibility
+LMS-GRD-029,GRD,Class average calculations
+LMS-GRD-030,GRD,Assessment performance analysis
+LMS-GRD-031,GRD,Student performance trends
+LMS-GRD-032,GRD,Unit performance comparison
+LMS-GRD-033,GRD,Assessment difficulty analysis
+LMS-GRD-034,GRD,Competency attainment reports
+LMS-GRD-035,GRD,Academic progress reports
+LMS-GRD-036,GRD,Grade distribution visualization
+LMS-GRD-037,GRD,Grade audit trail
+LMS-GRD-038,GRD,Grade discrepancy detection
+LMS-GRD-039,GRD,Academic result summaries
+LMS-GRD-040,GRD,Official results export
+LMS-AI-001,AI,AI learning assistant
+LMS-AI-002,AI,Course-aware AI assistant
+LMS-AI-003,AI,Lesson-based question answering
+LMS-AI-004,AI,Learning material summarization
+LMS-AI-005,AI,Study guide generation
+LMS-AI-006,AI,Revision notes generation
+LMS-AI-007,AI,Flashcard generation
+LMS-AI-008,AI,Practice question generation
+LMS-AI-009,AI,Quiz draft generation
+LMS-AI-010,AI,Examination question drafting
+LMS-AI-011,AI,Question difficulty suggestions
+LMS-AI-012,AI,Learning outcome mapping assistance
+LMS-AI-013,AI,Lesson structure suggestions
+LMS-AI-014,AI,Course content proofreading
+LMS-AI-015,AI,Lesson readability assistance
+LMS-AI-016,AI,Trainer lesson preparation assistant
+LMS-AI-017,AI,Assignment rubric drafting
+LMS-AI-018,AI,Student study planning
+LMS-AI-019,AI,Personalized revision suggestions
+LMS-AI-020,AI,Student knowledge gap identification
+LMS-AI-021,AI,Course resource recommendations
+LMS-AI-022,AI,Academic glossary generation
+LMS-AI-023,AI,Interactive tutoring
+LMS-AI-024,AI,Step-by-step educational explanations
+LMS-AI-025,AI,AI-generated practice scenarios
+LMS-AI-026,AI,AI support for case studies
+LMS-AI-027,AI,Multilingual learning assistance
+LMS-AI-028,AI,Text simplification
+LMS-AI-029,AI,Accessibility support
+LMS-AI-030,AI,AI usage analytics
+LMS-AI-031,AI,AI provider configuration
+LMS-AI-032,AI,AI API cost monitoring
+LMS-AI-033,AI,AI usage limits
+LMS-AI-034,AI,AI request queuing
+LMS-AI-035,AI,AI response caching
+LMS-AI-036,AI,AI service fallback
+LMS-AI-037,AI,AI-generated content review
+LMS-AI-038,AI,AI answer verification prompts
+LMS-AI-039,AI,AI-assisted feedback drafting
+LMS-AI-040,AI,Trainer approval of AI-generated materials
+LMS-PRG-001,PRG,Course progress dashboard
+LMS-PRG-002,PRG,Lesson completion tracking
+LMS-PRG-003,PRG,Unit completion tracking
+LMS-PRG-004,PRG,Course completion tracking
+LMS-PRG-005,PRG,Assessment completion tracking
+LMS-PRG-006,PRG,Learning activity history
+LMS-PRG-007,PRG,Student engagement metrics
+LMS-PRG-008,PRG,Learning outcome mapping
+LMS-PRG-009,PRG,Competency framework
+LMS-PRG-010,PRG,Competency evidence collection
+LMS-PRG-011,PRG,Competency assessment
+LMS-PRG-012,PRG,Competency achievement records
+LMS-PRG-013,PRG,Competency gap identification
+LMS-PRG-014,PRG,Practical assessment tracking
+LMS-PRG-015,PRG,Virtual lab progress integration
+LMS-PRG-016,PRG,Industrial attachment tracking
+LMS-PRG-017,PRG,Workplace supervisor feedback
+LMS-PRG-018,PRG,Trainer competency verification
+LMS-PRG-019,PRG,Competency portfolio
+LMS-PRG-020,PRG,Student learning portfolio
+LMS-PRG-021,PRG,Course completion eligibility
+LMS-PRG-022,PRG,Certificate generation
+LMS-PRG-023,PRG,Certificate verification
+LMS-PRG-024,PRG,Digital badges
+LMS-PRG-025,PRG,Student achievement records
+LMS-PRG-026,PRG,Academic progression dashboard
+LMS-PRG-027,PRG,At-risk student alerts
+LMS-PRG-028,PRG,Student support intervention tracking
+LMS-PRG-029,PRG,Completion analytics
+LMS-PRG-030,PRG,Academic progress export
+LMS-SEC-001,SEC,Role-based access control
+LMS-SEC-002,SEC,Student permission isolation
+LMS-SEC-003,SEC,Trainer course-level permissions
+LMS-SEC-004,SEC,Administrator privilege management
+LMS-SEC-005,SEC,Secure authentication
+LMS-SEC-006,SEC,Single sign-on security
+LMS-SEC-007,SEC,Session management
+LMS-SEC-008,SEC,Session expiration
+LMS-SEC-009,SEC,Multi-factor authentication support
+LMS-SEC-010,SEC,Password recovery security
+LMS-SEC-011,SEC,API access control
+LMS-SEC-012,SEC,Secure file storage
+LMS-SEC-013,SEC,File upload validation
+LMS-SEC-014,SEC,Malware scanning integration
+LMS-SEC-015,SEC,Data encryption in transit
+LMS-SEC-016,SEC,Sensitive data encryption at rest
+LMS-SEC-017,SEC,Student data privacy controls
+LMS-SEC-018,SEC,Academic record access logging
+LMS-SEC-019,SEC,Administrative audit logs
+LMS-SEC-020,SEC,Assessment access logging
+LMS-SEC-021,SEC,Assessment change audit
+LMS-SEC-022,SEC,Suspicious activity monitoring
+LMS-SEC-023,SEC,Rate limiting
+LMS-SEC-024,SEC,API abuse prevention
+LMS-SEC-025,SEC,Automated backup scheduling
+LMS-SEC-026,SEC,Backup integrity verification
+LMS-SEC-027,SEC,Disaster recovery
+LMS-SEC-028,SEC,Data restoration testing
+LMS-SEC-029,SEC,Data retention policies
+LMS-SEC-030,SEC,Secure data deletion
+LMS-SEC-031,SEC,Privacy consent management
+LMS-SEC-032,SEC,Accessibility compliance monitoring
+LMS-SEC-033,SEC,Error monitoring
+LMS-SEC-034,SEC,Performance monitoring
+LMS-SEC-035,SEC,Database health monitoring
+LMS-SEC-036,SEC,Background task monitoring
+LMS-SEC-037,SEC,Synchronization failure alerts
+LMS-SEC-038,SEC,Automated system health checks
+LMS-SEC-039,SEC,Security incident reporting
+LMS-SEC-040,SEC,Security audit reporting
+LMS-ANL-001,ANL,Institutional LMS dashboard
+LMS-ANL-002,ANL,Total enrolled students
+LMS-ANL-003,ANL,Active student reporting
+LMS-ANL-004,ANL,Course enrollment analytics
+LMS-ANL-005,ANL,Departmental analytics
+LMS-ANL-006,ANL,Trainer workload analytics
+LMS-ANL-007,ANL,Course completion analytics
+LMS-ANL-008,ANL,Unit completion analytics
+LMS-ANL-009,ANL,Lesson engagement analytics
+LMS-ANL-010,ANL,Resource usage analytics
+LMS-ANL-011,ANL,Video lesson analytics
+LMS-ANL-012,ANL,Live classroom attendance analytics
+LMS-ANL-013,ANL,Quiz performance analytics
+LMS-ANL-014,ANL,Examination performance analytics
+LMS-ANL-015,ANL,Assignment performance analytics
+LMS-ANL-016,ANL,Grade distribution analytics
+LMS-ANL-017,ANL,Competency attainment analytics
+LMS-ANL-018,ANL,Student participation analytics
+LMS-ANL-019,ANL,Student inactivity alerts
+LMS-ANL-020,ANL,At-risk student analytics
+LMS-ANL-021,ANL,Learning resource effectiveness
+LMS-ANL-022,ANL,Trainer engagement analytics
+LMS-ANL-023,ANL,Academic progression analytics
+LMS-ANL-024,ANL,Semester performance reports
+LMS-ANL-025,ANL,Academic year comparisons
+LMS-ANL-026,ANL,Moodle integration analytics
+LMS-ANL-027,ANL,Virtual Business Lab analytics
+LMS-ANL-028,ANL,Student learning time reports
+LMS-ANL-029,ANL,Assessment completion reports
+LMS-ANL-030,ANL,Custom report builder
+LMS-ANL-031,ANL,PDF report generation
+LMS-ANL-032,ANL,Excel report generation
+LMS-ANL-033,ANL,CSV report export
+LMS-ANL-034,ANL,Scheduled report generation
+LMS-ANL-035,ANL,Authorized report sharing
+LMS-ACC-001,ACC,Responsive learning interface
+LMS-ACC-002,ACC,Mobile-first content display
+LMS-ACC-003,ACC,Screen reader compatibility
+LMS-ACC-004,ACC,Keyboard navigation
+LMS-ACC-005,ACC,Accessible lesson editor
+LMS-ACC-006,ACC,Image alternative text
+LMS-ACC-007,ACC,Video captions
+LMS-ACC-008,ACC,Transcripts for audio
+LMS-ACC-009,ACC,Adjustable text display
+LMS-ACC-010,ACC,Accessible document preview
+LMS-ACC-011,ACC,Low-bandwidth mode
+LMS-ACC-012,ACC,Reduced media loading
+LMS-ACC-013,ACC,Compressed learning resources
+LMS-ACC-014,ACC,Downloadable lessons
+LMS-ACC-015,ACC,Offline reading
+LMS-ACC-016,ACC,Offline progress synchronization
+LMS-ACC-017,ACC,Interrupted download recovery
+LMS-ACC-018,ACC,Slow connection handling
+LMS-ACC-019,ACC,Network interruption recovery
+LMS-ACC-020,ACC,Accessible assessment interfaces
+LMS-ACC-021,ACC,Approved assessment accommodations
+LMS-ACC-022,ACC,Accessible feedback display
+LMS-ACC-023,ACC,Accessible mathematical content
+LMS-ACC-024,ACC,Language support
+LMS-ACC-025,ACC,Accessibility testing reports
+LMS-DEV-001,DEV,Audit existing LMS features before development
+LMS-DEV-002,DEV,Preserve existing working functionality
+LMS-DEV-003,DEV,Use unique identifiers for all new features
+LMS-DEV-004,DEV,Map every feature code to its implementation
+LMS-DEV-005,DEV,Use reusable course and assessment components
+LMS-DEV-006,DEV,Implement role-specific dashboards
+LMS-DEV-007,DEV,Use a consistent database schema
+LMS-DEV-008,DEV,Implement secure API endpoints
+LMS-DEV-009,DEV,Implement server-side permission validation
+LMS-DEV-010,DEV,Implement database transaction management
+LMS-DEV-011,DEV,Implement background synchronization jobs
+LMS-DEV-012,DEV,Implement idempotent synchronization
+LMS-DEV-013,DEV,Implement synchronization retry mechanisms
+LMS-DEV-014,DEV,Implement structured error handling
+LMS-DEV-015,DEV,Implement audit logging
+LMS-DEV-016,DEV,Implement automated unit tests
+LMS-DEV-017,DEV,Implement API integration tests
+LMS-DEV-018,DEV,Implement end-to-end user workflow tests
+LMS-DEV-019,DEV,Implement automated accessibility tests
+LMS-DEV-020,DEV,Implement load and performance tests
+LMS-DEV-021,DEV,Implement backup and recovery tests
+LMS-DEV-022,DEV,Implement Moodle integration tests
+LMS-DEV-023,DEV,Implement grade reconciliation tests
+LMS-DEV-024,DEV,Implement automated regression testing
+LMS-DEV-025,DEV,Implement feature-level documentation
+LMS-DEV-026,DEV,Maintain a feature implementation registry
+LMS-DEV-027,DEV,Maintain a feature completion dashboard
+LMS-DEV-028,DEV,Implement environment-specific configurations
+LMS-DEV-029,DEV,Implement production deployment checks
+LMS-DEV-030,DEV,Implement post-deployment health monitoring

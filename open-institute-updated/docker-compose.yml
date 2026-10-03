@@ -1,0 +1,57 @@
+# KOPS-004 / KOPS-002 — single-host production-style stack: Postgres + API + nginx-served SPA.
+# Usage: cp .env.compose.example .env && edit secrets && docker compose up -d --build
+# TLS: put a TLS-terminating proxy (Caddy / Traefik / cloud LB) in front of the `frontend` service.
+services:
+  db:
+    image: postgres:16
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: kvbdtc
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+      POSTGRES_DB: kvbdtc
+    volumes: [pgdata:/var/lib/postgresql/data]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U kvbdtc -d kvbdtc"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+
+  backend:
+    build: ./backend
+    restart: unless-stopped
+    depends_on:
+      db: { condition: service_healthy }
+    environment:
+      NODE_ENV: production
+      PORT: "4000"
+      DATABASE_URL: ${DATABASE_URL:-postgresql://kvbdtc:${POSTGRES_PASSWORD}@db:5432/kvbdtc?schema=public}
+      JWT_SECRET: ${JWT_SECRET:?set JWT_SECRET (openssl rand -base64 48)}
+      FRONTEND_ORIGIN: ${FRONTEND_ORIGIN:?set FRONTEND_ORIGIN, e.g. https://portal.example.ke}
+      SEED_ADMIN_EMAIL: ${SEED_ADMIN_EMAIL:?set SEED_ADMIN_EMAIL}
+      SEED_ADMIN_PASSWORD: ${SEED_ADMIN_PASSWORD:?set SEED_ADMIN_PASSWORD}
+      TRUST_PROXY: "1"
+      DB_POOL_SIZE: ${DB_POOL_SIZE:-10}
+      UPLOAD_DIR: /app/uploads
+    env_file:
+      - path: .env
+        required: false
+    volumes: [uploads:/app/uploads]
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:4000/api/ready >/dev/null || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 60s
+    stop_grace_period: 20s
+
+  frontend:
+    build: ./frontend
+    restart: unless-stopped
+    depends_on: [backend]
+    environment:
+      API_UPSTREAM: http://backend:4000
+    ports: ["127.0.0.1:${HTTP_PORT:-8080}:10000"]
+
+volumes:
+  pgdata:
+  uploads:

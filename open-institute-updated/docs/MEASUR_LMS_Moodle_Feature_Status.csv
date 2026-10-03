@@ -1,0 +1,801 @@
+﻿Code,Module,Feature Description,Status,Notes
+LMS-CNT-001,CNT,Trainer course creation,Not audited,
+LMS-CNT-002,CNT,Course title and description editor,Not audited,
+LMS-CNT-003,CNT,Unit and subunit creation,Not audited,
+LMS-CNT-004,CNT,Topic and subtopic management,Not audited,
+LMS-CNT-005,CNT,Rich-text lesson editor,Not audited,
+LMS-CNT-006,CNT,Direct typing of lesson content,Not audited,
+LMS-CNT-007,CNT,"Headings, paragraphs and formatting",Not audited,
+LMS-CNT-008,CNT,Tables and structured content editor,Not audited,
+LMS-CNT-009,CNT,Mathematical formula editor,Not audited,
+LMS-CNT-010,CNT,Scientific symbols editor,Not audited,
+LMS-CNT-011,CNT,Image insertion in lessons,Not audited,
+LMS-CNT-012,CNT,Audio insertion,Not audited,
+LMS-CNT-013,CNT,Video embedding,Not audited,
+LMS-CNT-014,CNT,Hyperlink insertion,Not audited,
+LMS-CNT-015,CNT,PDF document upload,Not audited,
+LMS-CNT-016,CNT,Word document upload,Not audited,
+LMS-CNT-017,CNT,PowerPoint upload,Not audited,
+LMS-CNT-018,CNT,Excel document upload,Not audited,
+LMS-CNT-019,CNT,Text document upload,Not audited,
+LMS-CNT-020,CNT,Multiple-file upload,Not audited,
+LMS-CNT-021,CNT,Drag-and-drop document upload,Not audited,
+LMS-CNT-022,CNT,Document preview before publishing,Not audited,
+LMS-CNT-023,CNT,In-browser PDF viewer,Not audited,
+LMS-CNT-024,CNT,In-browser document viewer,Not audited,
+LMS-CNT-025,CNT,Downloadable learning materials,Done (Batch 77),Trainer attaches files in the lesson builder; students download from the lesson.
+LMS-CNT-026,CNT,Typed content and document combination,Not audited,
+LMS-CNT-027,CNT,Lesson draft saving,Not audited,
+LMS-CNT-028,CNT,Automatic content saving,Not audited,
+LMS-CNT-029,CNT,Lesson publishing,Not audited,
+LMS-CNT-030,CNT,Scheduled lesson publishing,Done (Batch 77),Schedule picker in the lesson builder; lesson goes live at that time (checked every 5 min).
+LMS-CNT-031,CNT,Lesson editing,Not audited,
+LMS-CNT-032,CNT,Lesson version history,Not audited,
+LMS-CNT-033,CNT,Restore previous lesson versions,Not audited,
+LMS-CNT-034,CNT,Lesson duplication,Not audited,
+LMS-CNT-035,CNT,Lesson deletion with recovery,Not audited,
+LMS-CNT-036,CNT,Lesson access restrictions,Not audited,
+LMS-CNT-037,CNT,Lesson prerequisites,Not audited,
+LMS-CNT-038,CNT,Lesson completion tracking,Not audited,
+LMS-CNT-039,CNT,Lesson visibility control,Not audited,
+LMS-CNT-040,CNT,Trainer content ownership,Not audited,
+LMS-CNT-041,CNT,Collaborative lesson editing,Not audited,
+LMS-CNT-042,CNT,Administrator content approval,Not audited,
+LMS-CNT-043,CNT,Content review and feedback,Done (Batch 77),Review comments with open/resolved status in the lesson builder panel.
+LMS-CNT-044,CNT,Content change notifications,Done (Batch 77),"""Notify students"" button on live lessons (max once an hour per lesson)."
+LMS-CNT-045,CNT,Lesson attachments,Done (Batch 77),"Lesson attachments: upload, label, remove (builder) and list/download (student lesson)."
+LMS-CNT-046,CNT,Learning resource library,Not audited,
+LMS-CNT-047,CNT,Reusable lesson templates,Done (Batch 77),"Save a lesson as a template (optionally shared); create lessons from ""+ Add lesson > From template""."
+LMS-CNT-048,CNT,Course content import,Done (Batch 77),Imports as unpublished drafts; media not copied.
+LMS-CNT-049,CNT,SCORM content support,Not audited,
+LMS-CNT-050,CNT,H5P interactive content support,Not audited,
+LMS-CNT-051,CNT,Lesson bookmarking,Done (Batch 77),Save/Saved toggle on every student lesson; list under My Learning Tools.
+LMS-CNT-052,CNT,Student lesson notes,Done (Batch 77),Private notes panel on every student lesson; all notes under My Learning Tools.
+LMS-CNT-053,CNT,Lesson search,Done (Batch 77),Backend + UI wired.
+LMS-CNT-054,CNT,Content categorization,Done (Batch 77),Category field in the lesson builder panel.
+LMS-CNT-055,CNT,Content tagging,Done (Batch 77),Tags field in the lesson builder panel.
+LMS-CNT-056,CNT,Learning material replacement,Done (Batch 77),"""Replace file"" on an attachment keeps the old version id and bumps the version."
+LMS-CNT-057,CNT,File access permission management,Done (Batch 77),Per-file Students & staff / Staff only and Downloadable / View only controls.
+LMS-CNT-058,CNT,Content download tracking,Done (Batch 77),Downloads are logged and counted in LMS Tools > Content analytics.
+LMS-CNT-059,CNT,Content view analytics,Done (Batch 77),Each lesson open is recorded (once per 10 min per student).
+LMS-CNT-060,CNT,Course content export,Done (Batch 77),Backend + UI wired.
+LMS-QZ-001,QZ,Quiz creation dashboard,Done (existing before batch 76),"TP011 quiz builder: dashboard, title, instructions, course/unit link, question editor"
+LMS-QZ-002,QZ,Quiz title and description,Done (existing before batch 76),"TP011 quiz builder: dashboard, title, instructions, course/unit link, question editor"
+LMS-QZ-003,QZ,Quiz instructions editor,Done (existing before batch 76),"TP011 quiz builder: dashboard, title, instructions, course/unit link, question editor"
+LMS-QZ-004,QZ,Quiz linked to course and unit,Done (existing before batch 76),"TP011 quiz builder: dashboard, title, instructions, course/unit link, question editor"
+LMS-QZ-005,QZ,Quiz question editor,Done (existing before batch 76),"TP011 quiz builder: dashboard, title, instructions, course/unit link, question editor"
+LMS-QZ-006,QZ,Multiple-choice questions,Done (existing before batch 76),mcq single answer
+LMS-QZ-007,QZ,Single-answer questions,Done (existing before batch 76),mcq single answer
+LMS-QZ-008,QZ,Multiple-correct-answer questions,Done (batch 76),"mcq_multi; exact-set marking, optional partial credit"
+LMS-QZ-009,QZ,True-or-false questions,Done (existing before batch 76),true/false (stored as 2-option mcq)
+LMS-QZ-010,QZ,Fill-in-the-blank questions,Done (batch 76),fill_blank with per-blank accepted answers
+LMS-QZ-011,QZ,Short-answer questions,Done (existing before batch 76),short answer (hand-marked); now auto-markable when accepted answers are given
+LMS-QZ-012,QZ,Numerical questions,Done (batch 76),"numerical with absolute/percent tolerance, units, decimal comma"
+LMS-QZ-013,QZ,Matching questions,Done (batch 76),"matching, per-student shuffled"
+LMS-QZ-014,QZ,Ordering and sequencing questions,Done (batch 76),"ordering, never served in answer order"
+LMS-QZ-015,QZ,Essay questions,Done (existing before batch 76),"essay, hand-marked"
+LMS-QZ-016,QZ,Image-based questions,Partial (batch 76),media attaches via https/uploaded-file URL and renders in sitting; the editor has no upload button yet
+LMS-QZ-017,QZ,Audio-based questions,Partial (batch 76),media attaches via https/uploaded-file URL and renders in sitting; the editor has no upload button yet
+LMS-QZ-018,QZ,Video-based questions,Partial (batch 76),media attaches via https/uploaded-file URL and renders in sitting; the editor has no upload button yet
+LMS-QZ-019,QZ,Case-study questions,Done (batch 76),case_study / scenario / practical; always hand-marked via marking queue
+LMS-QZ-020,QZ,Scenario-based questions,Done (batch 76),case_study / scenario / practical; always hand-marked via marking queue
+LMS-QZ-021,QZ,Practical competency questions,Done (batch 76),case_study / scenario / practical; always hand-marked via marking queue
+LMS-QZ-022,QZ,Question-specific marks,Done (existing before batch 76),"per-quiz marks, correct-answer selection"
+LMS-QZ-023,QZ,Correct-answer selection,Done (existing before batch 76),"per-quiz marks, correct-answer selection"
+LMS-QZ-024,QZ,Multiple accepted answers,Done (batch 76),short_answer acceptedAnswers
+LMS-QZ-025,QZ,Partial-credit marking,Done (batch 76),partial credit for multi/fill/matching/ordering
+LMS-QZ-026,QZ,Negative marking configuration,Done (batch 76),"negative marking, attempted-wrong only, quiz floored at 0"
+LMS-QZ-027,QZ,Answer-specific feedback,Done (batch 76),"per-option feedback, explanation, why-wrong text in review"
+LMS-QZ-028,QZ,Explanation for correct answers,Done (batch 76),"per-option feedback, explanation, why-wrong text in review"
+LMS-QZ-029,QZ,Explanation for incorrect answers,Done (batch 76),"per-option feedback, explanation, why-wrong text in review"
+LMS-QZ-030,QZ,Question difficulty classification,Done (existing before batch 76),difficulty + topic existed; tags and bank facets added in 76
+LMS-QZ-031,QZ,"Easy, intermediate and advanced categories",Done (existing before batch 76),difficulty + topic existed; tags and bank facets added in 76
+LMS-QZ-032,QZ,Question categorization by topic,Done (existing before batch 76),difficulty + topic existed; tags and bank facets added in 76
+LMS-QZ-033,QZ,Question bank,Done (existing before batch 76),question bank + reuse across quizzes
+LMS-QZ-034,QZ,Reusable questions,Done (existing before batch 76),question bank + reuse across quizzes
+LMS-QZ-035,QZ,Random question selection,Done (batch 76),"random draws by topic/difficulty, seeded per student, publish-time feasibility check"
+LMS-QZ-036,QZ,Randomized answer options,Done (batch 76),separate option-shuffle setting
+LMS-QZ-037,QZ,Question shuffling,Done (existing before batch 76),question shuffling
+LMS-QZ-038,QZ,Question duplication,Done (batch 76),duplicate question from bank
+LMS-QZ-039,QZ,Question editing,Done (existing before batch 76),edit question
+LMS-QZ-040,QZ,Question version history,Done (batch 76),version snapshot on every edit; history + restore in bank list
+LMS-QZ-041,QZ,Question import,Done (batch 76),"CSV import (dry-run + valid rows), export; round-trips every type"
+LMS-QZ-042,QZ,Bulk question creation,Done (batch 76),"CSV import (dry-run + valid rows), export; round-trips every type"
+LMS-QZ-043,QZ,Question export,Done (batch 76),"CSV import (dry-run + valid rows), export; round-trips every type"
+LMS-QZ-044,QZ,Question preview,Partial (batch 76),POST /quizzes/questions/:id/try API only; no button in UI yet
+LMS-QZ-045,QZ,Quiz preview as student,Done (existing before batch 76),"preview as student (now renders every type, pages)"
+LMS-QZ-046,QZ,Quiz time limit,Done (existing before batch 76),time limit
+LMS-QZ-047,QZ,Quiz opening date,Done (batch 76),"opensAt / closesAt, enforced on list, take and submit"
+LMS-QZ-048,QZ,Quiz closing date,Done (batch 76),"opensAt / closesAt, enforced on list, take and submit"
+LMS-QZ-049,QZ,Attempts allowed,Done (existing before batch 76),attempts allowed
+LMS-QZ-050,QZ,Retake configuration,Done (batch 76),minimum wait between attempts
+LMS-QZ-051,QZ,Highest-attempt grading,Partial (batch 76),"gradingMethod enforced in Assessment Centre, attempts panel and review; Grades & Transcript / gradebook pages still read raw per-attempt scores"
+LMS-QZ-052,QZ,Average-attempt grading,Partial (batch 76),"gradingMethod enforced in Assessment Centre, attempts panel and review; Grades & Transcript / gradebook pages still read raw per-attempt scores"
+LMS-QZ-053,QZ,Latest-attempt grading,Partial (batch 76),"gradingMethod enforced in Assessment Centre, attempts panel and review; Grades & Transcript / gradebook pages still read raw per-attempt scores"
+LMS-QZ-054,QZ,Pass mark configuration,Done (existing before batch 76),"pass mark, total marks"
+LMS-QZ-055,QZ,Maximum quiz marks,Done (existing before batch 76),"pass mark, total marks"
+LMS-QZ-056,QZ,Question-per-page configuration,Done (batch 76),questions per page; 1 = one at a time
+LMS-QZ-057,QZ,One-question-at-a-time mode,Done (batch 76),questions per page; 1 = one at a time
+LMS-QZ-058,QZ,Quiz navigation controls,Done (batch 76),"forward-only mode, page jump, flag for review"
+LMS-QZ-059,QZ,Student answer review,Done (batch 76),answer review with option feedback and marker comments
+LMS-QZ-060,QZ,Auto-save student answers,Done (batch 76),autosave every ~2.5s and on tab hide; resume after refresh
+LMS-QZ-061,QZ,Automatic quiz submission,Done (batch 76),client auto-submit at deadline; server marks autosaved answers if time lapsed
+LMS-QZ-062,QZ,Time-expiry handling,Done (batch 76),client auto-submit at deadline; server marks autosaved answers if time lapsed
+LMS-QZ-063,QZ,Immediate marking,Done (batch 76),IMMEDIATE vs DEFERRED marking
+LMS-QZ-064,QZ,Deferred marking,Done (batch 76),IMMEDIATE vs DEFERRED marking
+LMS-QZ-065,QZ,Automatic objective-question marking,Done (batch 76),auto-marking for all objective types
+LMS-QZ-066,QZ,Manual essay marking,Done (batch 76),marking queue with per-question marks and comments
+LMS-QZ-067,QZ,Manual regrading,Partial (batch 76),"override API exists (requires reason, audited); UI only shows ungraded answers, no re-open of graded ones"
+LMS-QZ-068,QZ,Automatic regrading,Done (batch 76),"Regrade panel (preview, then apply) and audited answer-key correction API; manual marks never overwritten. Key correction has no UI button yet"
+LMS-QZ-069,QZ,Quiz result publication,Done (batch 76),"release results + notify, delayed key release, visibility modes"
+LMS-QZ-070,QZ,Delayed answer-key release,Done (batch 76),"release results + notify, delayed key release, visibility modes"
+LMS-QZ-071,QZ,Result visibility control,Done (batch 76),"release results + notify, delayed key release, visibility modes"
+LMS-QZ-072,QZ,Individual quiz feedback,Partial (batch 76),per-question trainer comments; no overall comment per attempt
+LMS-QZ-073,QZ,Quiz performance analytics,Done (batch 76),"analytics: distribution, topic mastery, item difficulty/discrimination, attempt history"
+LMS-QZ-074,QZ,Quiz attempt history,Done (batch 76),"analytics: distribution, topic mastery, item difficulty/discrimination, attempt history"
+LMS-QZ-075,QZ,Student quiz review,Done (batch 76),"analytics: distribution, topic mastery, item difficulty/discrimination, attempt history"
+LMS-QZ-076,QZ,Trainer quiz statistics,Done (batch 76),"analytics: distribution, topic mastery, item difficulty/discrimination, attempt history"
+LMS-QZ-077,QZ,Question performance analytics,Done (batch 76),"analytics: distribution, topic mastery, item difficulty/discrimination, attempt history"
+LMS-QZ-078,QZ,Question error reporting,Done (batch 76),students report a question; trainer resolves; student notified
+LMS-QZ-079,QZ,Quiz availability by student group,Done (batch 76),"allowedIntakes; hidden from other groups, enforced server-side"
+LMS-QZ-080,QZ,Quiz accommodations and approved extensions,Done (batch 76),"per-student extra attempts / later close, reason audited, student notified"
+LMS-EXM-001,EXM,Examination creation,Not audited,
+LMS-EXM-002,EXM,Examination timetable,Not audited,
+LMS-EXM-003,EXM,Examination calendar,Not audited,
+LMS-EXM-004,EXM,Examination registration,Not audited,
+LMS-EXM-005,EXM,Examination eligibility checking,Not audited,
+LMS-EXM-006,EXM,Course-based examination assignment,Not audited,
+LMS-EXM-007,EXM,Unit-based examinations,Not audited,
+LMS-EXM-008,EXM,Continuous assessment tests,Not audited,
+LMS-EXM-009,EXM,Midterm examinations,Not audited,
+LMS-EXM-010,EXM,End-of-term examinations,Not audited,
+LMS-EXM-011,EXM,Mock examinations,Not audited,
+LMS-EXM-012,EXM,Supplementary examination configuration,Not audited,
+LMS-EXM-013,EXM,Special examination scheduling,Not audited,
+LMS-EXM-014,EXM,Examination paper editor,Not audited,
+LMS-EXM-015,EXM,Examination document upload,Not audited,
+LMS-EXM-016,EXM,Examination question bank,Not audited,
+LMS-EXM-017,EXM,Examination blueprint,Not audited,
+LMS-EXM-018,EXM,Learning outcome mapping,Not audited,
+LMS-EXM-019,EXM,Competency-based assessment mapping,Not audited,
+LMS-EXM-020,EXM,Examination section configuration,Not audited,
+LMS-EXM-021,EXM,Section-based marks,Not audited,
+LMS-EXM-022,EXM,Examination time limits,Not audited,
+LMS-EXM-023,EXM,Examination access windows,Not audited,
+LMS-EXM-024,EXM,Examination attempt limits,Not audited,
+LMS-EXM-025,EXM,Randomized examination questions,Not audited,
+LMS-EXM-026,EXM,Randomized examination versions,Not audited,
+LMS-EXM-027,EXM,Examination instructions,Not audited,
+LMS-EXM-028,EXM,Examination preview,Not audited,
+LMS-EXM-029,EXM,Examination approval workflow,Not audited,
+LMS-EXM-030,EXM,Examination publishing,Not audited,
+LMS-EXM-031,EXM,Examination access control,Not audited,
+LMS-EXM-032,EXM,Approved extra-time settings,Not audited,
+LMS-EXM-033,EXM,Examination autosave,Not audited,
+LMS-EXM-034,EXM,Examination submission tracking,Not audited,
+LMS-EXM-035,EXM,Interrupted-attempt recovery,Not audited,
+LMS-EXM-036,EXM,Examination marking,Not audited,
+LMS-EXM-037,EXM,Examination moderation,Not audited,
+LMS-EXM-038,EXM,Examination result approval,Not audited,
+LMS-EXM-039,EXM,Examination result release,Not audited,
+LMS-EXM-040,EXM,Examination result analytics,Not audited,
+LMS-EXM-041,EXM,Examination scripts archive,Not audited,
+LMS-EXM-042,EXM,Examination audit trail,Not audited,
+LMS-EXM-043,EXM,Examination incident reporting,Not audited,
+LMS-EXM-044,EXM,Examination rescheduling,Not audited,
+LMS-EXM-045,EXM,Examination report generation,Not audited,
+LMS-ASG-001,ASG,Assignment creation,Done (Batch 77),Backend + UI wired.
+LMS-ASG-002,ASG,Assignment instructions,Done (Batch 77),Backend + UI wired.
+LMS-ASG-003,ASG,Assignment linked to units,Done (Batch 77),Backend + UI wired.
+LMS-ASG-004,ASG,Assignment deadlines,Done (Batch 77),Backend + UI wired.
+LMS-ASG-005,ASG,Scheduled assignment release,Done (Batch 77),Hidden until release time; sweeper announces it (lib/lesson-publisher.ts).
+LMS-ASG-006,ASG,Individual assignments,Done (Batch 77),Backend + UI wired.
+LMS-ASG-007,ASG,Group assignments,Done (Batch 77),"Groups form/join; one hand-in, grade shared to all members."
+LMS-ASG-008,ASG,Online text submissions,Done (Batch 77),Backend + UI wired.
+LMS-ASG-009,ASG,File submissions,Done (Batch 77),Backend + UI wired.
+LMS-ASG-010,ASG,Multiple-file submissions,Done (Batch 77),Backend + UI wired.
+LMS-ASG-011,ASG,PDF submissions,Done (Batch 77),Backend + UI wired.
+LMS-ASG-012,ASG,Document submissions,Done (Batch 77),Backend + UI wired.
+LMS-ASG-013,ASG,Spreadsheet submissions,Done (Batch 77),Backend + UI wired.
+LMS-ASG-014,ASG,Presentation submissions,Done (Batch 77),Backend + UI wired.
+LMS-ASG-015,ASG,Audio and video submissions,Done (Batch 77),Backend + UI wired.
+LMS-ASG-016,ASG,Practical evidence submissions,Done (Batch 77),"Per-assignment ""evidence required"" rule."
+LMS-ASG-017,ASG,Assignment draft saving,Done (Batch 77),Draft saves; student page autosaves every 20s.
+LMS-ASG-018,ASG,Submission confirmation,Done (Batch 77),Backend + UI wired.
+LMS-ASG-019,ASG,Late submission configuration,Done (Batch 77),None / per-day penalty with cap / accept; optional cutoff.
+LMS-ASG-020,ASG,Late submission tracking,Done (Batch 77),Backend + UI wired.
+LMS-ASG-021,ASG,Extension requests,Done (Batch 77),Backend + UI wired.
+LMS-ASG-022,ASG,Trainer-approved extensions,Done (Batch 77),Backend + UI wired.
+LMS-ASG-023,ASG,Resubmission configuration,Done (Batch 77),Backend + UI wired.
+LMS-ASG-024,ASG,Submission version history,Done (Batch 77),SubmissionVersion snapshots; trainer sees word-level change.
+LMS-ASG-025,ASG,Bulk submission download,Done (Batch 77),ZIP by student number with manifest.csv.
+LMS-ASG-026,ASG,Inline document marking,Partial (Batch 78),PARTIAL: typed-answer highlighting and PDF page-anchored feedback are available; no drawn PDF overlays or Word in-browser editor.
+LMS-ASG-027,ASG,Assignment grading,Done (Batch 77),Backend + UI wired.
+LMS-ASG-028,ASG,Rubric-based grading,Done (Batch 77),Backend + UI wired.
+LMS-ASG-029,ASG,Competency-based grading,Done (Batch 77),Backend + UI wired.
+LMS-ASG-030,ASG,Numerical marking,Done (Batch 77),Backend + UI wired.
+LMS-ASG-031,ASG,Written feedback,Done (Batch 77),Backend + UI wired.
+LMS-ASG-032,ASG,Audio feedback,Done (Batch 77),Trainer uploads audio files in the marking panel; students open them with their result.
+LMS-ASG-033,ASG,Video feedback,Done (Batch 77),Trainer uploads video files in the marking panel; students open them with their result.
+LMS-ASG-034,ASG,Annotated document feedback,Done (Batch 77),"Upload an annotated copy of the student document as a feedback file, plus highlight-and-comment on typed answers."
+LMS-ASG-035,ASG,Assignment moderation,Done (Batch 77),"Deterministic sample %, second mark by a different user, release blocked until sample moderated."
+LMS-ASG-036,ASG,Assignment resubmission review,Done (Batch 77),Resubmission flags work for re-marking; shows what changed.
+LMS-ASG-037,ASG,Assignment grade publication,Done (Batch 77),Backend + UI wired.
+LMS-ASG-038,ASG,Assignment performance analytics,Done (Batch 77),Backend + UI wired.
+LMS-ASG-039,ASG,Plagiarism-checking integration,Partial (Batch 77),PARTIAL: word-overlap (Jaccard + 3-word shingles) against classmates; not an external plagiarism service.
+LMS-ASG-040,ASG,Assignment archive,Done (Batch 77),Backend + UI wired.
+LMS-STU-001,STU,Personalized student dashboard,Not audited,
+LMS-STU-002,STU,Enrolled course display,Not audited,
+LMS-STU-003,STU,Course unit navigation,Not audited,
+LMS-STU-004,STU,Lesson access,Not audited,
+LMS-STU-005,STU,PDF reading interface,Not audited,
+LMS-STU-006,STU,Document viewing,Not audited,
+LMS-STU-007,STU,Learning material downloads,Not audited,
+LMS-STU-008,STU,Video lesson playback,Not audited,
+LMS-STU-009,STU,Audio lesson playback,Not audited,
+LMS-STU-010,STU,Interactive lesson viewer,Not audited,
+LMS-STU-011,STU,Course announcements,Not audited,
+LMS-STU-012,STU,Learning calendar,Not audited,
+LMS-STU-013,STU,Upcoming assessments,Not audited,
+LMS-STU-014,STU,Upcoming assignment deadlines,Not audited,
+LMS-STU-015,STU,Quiz availability display,Not audited,
+LMS-STU-016,STU,Examination timetable,Not audited,
+LMS-STU-017,STU,Online quiz participation,Not audited,
+LMS-STU-018,STU,Online examination participation,Not audited,
+LMS-STU-019,STU,Assignment submission,Not audited,
+LMS-STU-020,STU,Assignment submission history,Not audited,
+LMS-STU-021,STU,Personal study notes,Not audited,
+LMS-STU-022,STU,Lesson bookmarking,Not audited,
+LMS-STU-023,STU,Lesson completion indicators,Not audited,
+LMS-STU-024,STU,Course progress tracking,Not audited,
+LMS-STU-025,STU,Unit completion tracking,Not audited,
+LMS-STU-026,STU,Assessment marks display,Not audited,
+LMS-STU-027,STU,Gradebook access,Not audited,
+LMS-STU-028,STU,Assessment feedback viewing,Not audited,
+LMS-STU-029,STU,Quiz answer review,Not audited,
+LMS-STU-030,STU,Examination results viewing,Not audited,
+LMS-STU-031,STU,Academic progress visualization,Not audited,
+LMS-STU-032,STU,Competency achievement tracking,Not audited,
+LMS-STU-033,STU,Learning outcome progress,Not audited,
+LMS-STU-034,STU,Personal learning goals,Not audited,
+LMS-STU-035,STU,Study reminders,Not audited,
+LMS-STU-036,STU,Course discussion access,Not audited,
+LMS-STU-037,STU,Trainer messaging,Not audited,
+LMS-STU-038,STU,Peer collaboration,Not audited,
+LMS-STU-039,STU,Question and answer forum,Not audited,
+LMS-STU-040,STU,Student support requests,Not audited,
+LMS-STU-041,STU,Learning resource search,Not audited,
+LMS-STU-042,STU,Recently accessed lessons,Not audited,
+LMS-STU-043,STU,Continue learning feature,Not audited,
+LMS-STU-044,STU,Low-bandwidth learning mode,Not audited,
+LMS-STU-045,STU,Mobile-responsive learning,Not audited,
+LMS-STU-046,STU,Offline resource access,Not audited,
+LMS-STU-047,STU,Offline activity synchronization,Not audited,
+LMS-STU-048,STU,Accessibility preferences,Not audited,
+LMS-STU-049,STU,Language preferences,Not audited,
+LMS-STU-050,STU,Personal learning activity history,Not audited,
+LMS-STU-051,STU,Achievement badges,Not audited,
+LMS-STU-052,STU,Course completion certificates,Not audited,
+LMS-STU-053,STU,Academic transcript integration,Not audited,
+LMS-STU-054,STU,Student learning analytics,Not audited,
+LMS-STU-055,STU,Student course feedback,Not audited,
+LMS-TRN-001,TRN,Trainer dashboard,Not audited,
+LMS-TRN-002,TRN,Assigned courses,Not audited,
+LMS-TRN-003,TRN,Course creation requests,Not audited,
+LMS-TRN-004,TRN,Student roster,Not audited,
+LMS-TRN-005,TRN,Student profile access,Not audited,
+LMS-TRN-006,TRN,Class grouping,Not audited,
+LMS-TRN-007,TRN,Tutorial group management,Not audited,
+LMS-TRN-008,TRN,Student enrollment overview,Not audited,
+LMS-TRN-009,TRN,Attendance recording,Not audited,
+LMS-TRN-010,TRN,Live attendance tracking,Not audited,
+LMS-TRN-011,TRN,Lesson creation,Not audited,
+LMS-TRN-012,TRN,Course content editing,Not audited,
+LMS-TRN-013,TRN,Resource management,Not audited,
+LMS-TRN-014,TRN,Quiz management,Not audited,
+LMS-TRN-015,TRN,Examination management,Not audited,
+LMS-TRN-016,TRN,Assignment management,Not audited,
+LMS-TRN-017,TRN,Assessment marking dashboard,Not audited,
+LMS-TRN-018,TRN,Bulk grading,Not audited,
+LMS-TRN-019,TRN,Rubric management,Not audited,
+LMS-TRN-020,TRN,Gradebook management,Not audited,
+LMS-TRN-021,TRN,Grade correction requests,Not audited,
+LMS-TRN-022,TRN,Student performance monitoring,Not audited,
+LMS-TRN-023,TRN,Student engagement analytics,Not audited,
+LMS-TRN-024,TRN,At-risk student identification,Not audited,
+LMS-TRN-025,TRN,Individual learner reports,Not audited,
+LMS-TRN-026,TRN,Class performance reports,Not audited,
+LMS-TRN-027,TRN,Course announcements,Not audited,
+LMS-TRN-028,TRN,Class messaging,Not audited,
+LMS-TRN-029,TRN,Discussion moderation,Not audited,
+LMS-TRN-030,TRN,Live lesson scheduling,Not audited,
+LMS-TRN-031,TRN,Live classroom management,Not audited,
+LMS-TRN-032,TRN,Student consultation scheduling,Not audited,
+LMS-TRN-033,TRN,Academic intervention records,Not audited,
+LMS-TRN-034,TRN,Course completion monitoring,Not audited,
+LMS-TRN-035,TRN,Learning outcome assessment,Not audited,
+LMS-TRN-036,TRN,Competency evidence review,Not audited,
+LMS-TRN-037,TRN,Course content approval tracking,Not audited,
+LMS-TRN-038,TRN,Course resource sharing,Not audited,
+LMS-TRN-039,TRN,Course duplication,Not audited,
+LMS-TRN-040,TRN,Course archive access,Not audited,
+LMS-TRN-041,TRN,Teaching workload overview,Not audited,
+LMS-TRN-042,TRN,Trainer activity reports,Not audited,
+LMS-TRN-043,TRN,Student support referrals,Not audited,
+LMS-TRN-044,TRN,Trainer calendar,Not audited,
+LMS-TRN-045,TRN,Trainer notification center,Not audited,
+LMS-MDL-001,MDL,Moodle connection configuration,Partial (code audit 2026-10-03),Single-instance URL and tokens are environment-configured in backend/src/moodle/client.ts
+LMS-MDL-002,MDL,Moodle instance registration,Not implemented (code audit 2026-10-03),No multi-instance registry or administration workflow
+LMS-MDL-003,MDL,Secure API integration,Partial (code audit 2026-10-03),REST client uses token authentication; live Moodle verification is outstanding
+LMS-MDL-004,MDL,Moodle web service configuration,Partial (code audit 2026-10-03),Provisioning helper exists; administrator must run and verify it in Moodle
+LMS-MDL-005,MDL,API authentication,Partial (code audit 2026-10-03),Separate service and SSO tokens are supported; live token validation is outstanding
+LMS-MDL-006,MDL,Moodle health monitoring,Partial (code audit 2026-10-03),Live probe exists at /api/insights/moodle-health; not verified against the institution instance
+LMS-MDL-007,MDL,Moodle connection status,Partial (code audit 2026-10-03),Health route reports live probe and configuration status; requires live verification
+LMS-MDL-008,MDL,Moodle course creation,Partial (code audit 2026-10-03),Admin course workflow creates Moodle courses when integration credentials are configured
+LMS-MDL-009,MDL,Course mapping between platforms,Partial (code audit 2026-10-03),Moodle course id is persisted on the application course; live behavior is unverified
+LMS-MDL-010,MDL,Unit mapping,Not implemented (code audit 2026-10-03),Courses use a configured default Moodle category rather than per-unit mapping
+LMS-MDL-011,MDL,Student account mapping,Partial (code audit 2026-10-03),Lazy account creation and Moodle id persistence are implemented
+LMS-MDL-012,MDL,Trainer account mapping,Partial (code audit 2026-10-03),Trainer role mapping exists; automatic trainer synchronization and enrolment are absent
+LMS-MDL-013,MDL,Single sign-on integration,Partial (code audit 2026-10-03),auth_userkey launch flow exists; Moodle plugin and live redirect are unverified
+LMS-MDL-014,MDL,Centralized access management,Partial (code audit 2026-10-03),Application roles map narrowly to Moodle roles; ongoing permission sync is absent
+LMS-MDL-015,MDL,Student enrollment synchronization,Partial (code audit 2026-10-03),Existing students are enrolled during course-mode sync; new enrolment lifecycle hooks are absent
+LMS-MDL-016,MDL,Student unenrollment synchronization,Partial (code audit 2026-10-03),Unenrol API helper exists but is not wired to withdrawal or payment status changes
+LMS-MDL-017,MDL,Trainer enrollment synchronization,Not implemented (code audit 2026-10-03),No trainer enrolment workflow is wired
+LMS-MDL-018,MDL,Moodle course content access,Partial (code audit 2026-10-03),Student SSO launch route and frontend action exist; live course access is unverified
+LMS-MDL-019,MDL,Moodle lesson synchronization,Not implemented (code audit 2026-10-03),No lesson synchronization workflow
+LMS-MDL-020,MDL,Moodle resource synchronization,Not implemented (code audit 2026-10-03),No resource synchronization workflow
+LMS-MDL-021,MDL,Moodle file reference synchronization,Not implemented (code audit 2026-10-03),No file reference synchronization workflow
+LMS-MDL-022,MDL,Moodle quiz integration,Not implemented (code audit 2026-10-03),No Moodle quiz synchronization or attempt integration
+LMS-MDL-023,MDL,Moodle question bank integration,Not implemented (code audit 2026-10-03),No Moodle question bank integration
+LMS-MDL-024,MDL,Moodle examination integration,Not implemented (code audit 2026-10-03),No Moodle examination integration
+LMS-MDL-025,MDL,Moodle assignment integration,Not implemented (code audit 2026-10-03),No Moodle assignment synchronization
+LMS-MDL-026,MDL,Moodle submission status synchronization,Not implemented (code audit 2026-10-03),No submission status synchronization
+LMS-MDL-027,MDL,Moodle grade synchronization,Not implemented (code audit 2026-10-03),No Moodle grade synchronization
+LMS-MDL-028,MDL,Moodle gradebook mapping,Not implemented (code audit 2026-10-03),No gradebook mapping workflow
+LMS-MDL-029,MDL,Assessment category mapping,Not implemented (code audit 2026-10-03),No assessment category mapping
+LMS-MDL-030,MDL,Grade weighting synchronization,Not implemented (code audit 2026-10-03),No grade weighting synchronization
+LMS-MDL-031,MDL,Assessment attempt tracking,Not implemented (code audit 2026-10-03),No assessment attempt tracking
+LMS-MDL-032,MDL,Quiz completion synchronization,Not implemented (code audit 2026-10-03),No quiz completion synchronization
+LMS-MDL-033,MDL,Assignment completion synchronization,Not implemented (code audit 2026-10-03),No assignment completion synchronization
+LMS-MDL-034,MDL,Course completion synchronization,Partial (code audit 2026-10-03),Webhook events trigger a notification but do not synchronize completion state
+LMS-MDL-035,MDL,Competency completion synchronization,Not implemented (code audit 2026-10-03),No competency completion synchronization
+LMS-MDL-036,MDL,Moodle feedback synchronization,Not implemented (code audit 2026-10-03),No feedback synchronization
+LMS-MDL-037,MDL,Moodle activity tracking,Not implemented (code audit 2026-10-03),No Moodle activity data synchronization
+LMS-MDL-038,MDL,Moodle announcement integration,Not implemented (code audit 2026-10-03),No announcement synchronization
+LMS-MDL-039,MDL,Moodle calendar integration,Not implemented (code audit 2026-10-03),No calendar synchronization
+LMS-MDL-040,MDL,Moodle notification integration,Partial (code audit 2026-10-03),Limited completion webhook events create in-app notifications
+LMS-MDL-041,MDL,Moodle discussion integration,Not implemented (code audit 2026-10-03),No discussion integration
+LMS-MDL-042,MDL,Moodle attendance integration,Not implemented (code audit 2026-10-03),No attendance integration
+LMS-MDL-043,MDL,Moodle H5P integration,Not implemented (code audit 2026-10-03),No Moodle H5P integration
+LMS-MDL-044,MDL,Moodle SCORM integration,Not implemented (code audit 2026-10-03),App SCORM support is separate and not synchronized with Moodle SCORM activities
+LMS-MDL-045,MDL,Moodle LTI integration,Not implemented (code audit 2026-10-03),No LTI integration
+LMS-MDL-046,MDL,Moodle data import,Not implemented (code audit 2026-10-03),No Moodle data import workflow
+LMS-MDL-047,MDL,Moodle data export,Not implemented (code audit 2026-10-03),No Moodle data export workflow
+LMS-MDL-048,MDL,Moodle backup tracking,Not implemented (code audit 2026-10-03),No Moodle backup tracking
+LMS-MDL-049,MDL,Moodle synchronization queue,Not implemented (code audit 2026-10-03),No durable Moodle synchronization queue
+LMS-MDL-050,MDL,Automatic retry on synchronization failure,Partial (code audit 2026-10-03),REST client retries transient failures once; there is no durable retry queue
+LMS-MDL-051,MDL,Duplicate synchronization prevention,Partial (code audit 2026-10-03),Webhook deduplication uses event fields but has no unique receipt constraint
+LMS-MDL-052,MDL,Synchronization conflict resolution,Not implemented (code audit 2026-10-03),No synchronization conflict resolution workflow
+LMS-MDL-053,MDL,Synchronization audit log,Partial (code audit 2026-10-03),Webhook receipt and processing outcomes are stored in audit logs
+LMS-MDL-054,MDL,Moodle integration error reporting,Partial (code audit 2026-10-03),Errors return failure responses and logs; no Moodle error dashboard exists
+LMS-MDL-055,MDL,Manual synchronization controls,Partial (code audit 2026-10-03),Admin can manually synchronize Moodle course records only
+LMS-MDL-056,MDL,Scheduled synchronization,Not implemented (code audit 2026-10-03),No scheduled Moodle synchronization
+LMS-MDL-057,MDL,Event-driven synchronization,Partial (code audit 2026-10-03),Inbound webhook handling supports limited event types and effects
+LMS-MDL-058,MDL,Synchronization dashboard,Partial (code audit 2026-10-03),Course-level sync status is shown; no system-wide dashboard exists
+LMS-MDL-059,MDL,Integration permission controls,Partial (code audit 2026-10-03),Course administration is role-gated; no configurable per-integration permissions exist
+LMS-MDL-060,MDL,Moodle integration analytics,Not implemented (code audit 2026-10-03),No Moodle integration analytics
+LMS-ADM-001,ADM,Central LMS administration dashboard,Not audited,
+LMS-ADM-002,ADM,Course creation and management,Not audited,
+LMS-ADM-003,ADM,Course approval,Not audited,
+LMS-ADM-004,ADM,Course allocation to departments,Not audited,
+LMS-ADM-005,ADM,Unit and curriculum management,Not audited,
+LMS-ADM-006,ADM,Academic year configuration,Not audited,
+LMS-ADM-007,ADM,Semester management,Not audited,
+LMS-ADM-008,ADM,Academic calendar,Not audited,
+LMS-ADM-009,ADM,Trainer account management,Not audited,
+LMS-ADM-010,ADM,Trainer verification,Not audited,
+LMS-ADM-011,ADM,Trainer course allocation,Not audited,
+LMS-ADM-012,ADM,Student enrollment management,Not audited,
+LMS-ADM-013,ADM,Student course allocation,Not audited,
+LMS-ADM-014,ADM,Bulk student enrollment,Not audited,
+LMS-ADM-015,ADM,Bulk trainer allocation,Not audited,
+LMS-ADM-016,ADM,Student group management,Not audited,
+LMS-ADM-017,ADM,Department management,Not audited,
+LMS-ADM-018,ADM,Faculty management,Not audited,
+LMS-ADM-019,ADM,Academic program management,Not audited,
+LMS-ADM-020,ADM,Curriculum version management,Not audited,
+LMS-ADM-021,ADM,Course content approval,Not audited,
+LMS-ADM-022,ADM,Assessment approval,Not audited,
+LMS-ADM-023,ADM,Examination approval,Not audited,
+LMS-ADM-024,ADM,Assessment moderation assignment,Not audited,
+LMS-ADM-025,ADM,Academic results approval,Not audited,
+LMS-ADM-026,ADM,Grade change authorization,Not audited,
+LMS-ADM-027,ADM,Grade correction audit,Not audited,
+LMS-ADM-028,ADM,Course progress monitoring,Not audited,
+LMS-ADM-029,ADM,Student academic activity monitoring,Not audited,
+LMS-ADM-030,ADM,Trainer activity monitoring,Not audited,
+LMS-ADM-031,ADM,LMS configuration,Not audited,
+LMS-ADM-032,ADM,Assessment policy configuration,Not audited,
+LMS-ADM-033,ADM,Grading scale configuration,Not audited,
+LMS-ADM-034,ADM,Pass mark configuration,Not audited,
+LMS-ADM-035,ADM,Course completion rules,Not audited,
+LMS-ADM-036,ADM,Student access permissions,Not audited,
+LMS-ADM-037,ADM,Trainer access permissions,Not audited,
+LMS-ADM-038,ADM,Administrator role management,Not audited,
+LMS-ADM-039,ADM,Permission audit trail,Not audited,
+LMS-ADM-040,ADM,LMS-wide announcements,Not audited,
+LMS-ADM-041,ADM,LMS notification management,Not audited,
+LMS-ADM-042,ADM,Content storage management,Not audited,
+LMS-ADM-043,ADM,File size and type restrictions,Not audited,
+LMS-ADM-044,ADM,Moodle integration administration,Not audited,
+LMS-ADM-045,ADM,LMS backup management,Not audited,
+LMS-ADM-046,ADM,LMS system health dashboard,Not audited,
+LMS-ADM-047,ADM,LMS error monitoring,Not audited,
+LMS-ADM-048,ADM,LMS usage analytics,Not audited,
+LMS-ADM-049,ADM,Academic performance reports,Not audited,
+LMS-ADM-050,ADM,LMS maintenance mode,Not audited,
+LMS-ADM-051,ADM,Archived course management,Not audited,
+LMS-ADM-052,ADM,Course restoration,Not audited,
+LMS-ADM-053,ADM,Student learning access review,Not audited,
+LMS-ADM-054,ADM,Academic audit reports,Not audited,
+LMS-ADM-055,ADM,Data retention configuration,Not audited,
+LMS-REG-001,REG,Registrar LMS dashboard,Not audited,
+LMS-REG-002,REG,Registered student verification,Not audited,
+LMS-REG-003,REG,Academic program verification,Not audited,
+LMS-REG-004,REG,Registered unit verification,Not audited,
+LMS-REG-005,REG,Student course eligibility,Not audited,
+LMS-REG-006,REG,Semester registration synchronization,Not audited,
+LMS-REG-007,REG,Course enrollment reconciliation,Not audited,
+LMS-REG-008,REG,Examination eligibility synchronization,Not audited,
+LMS-REG-009,REG,Continuous assessment records,Not audited,
+LMS-REG-010,REG,Examination marks synchronization,Not audited,
+LMS-REG-011,REG,Grade validation,Not audited,
+LMS-REG-012,REG,Grade approval workflow,Not audited,
+LMS-REG-013,REG,Grade moderation records,Not audited,
+LMS-REG-014,REG,Academic progression calculations,Not audited,
+LMS-REG-015,REG,Unit completion records,Not audited,
+LMS-REG-016,REG,Course completion records,Not audited,
+LMS-REG-017,REG,Competency achievement records,Not audited,
+LMS-REG-018,REG,Academic transcript synchronization,Not audited,
+LMS-REG-019,REG,Missing marks detection,Not audited,
+LMS-REG-020,REG,Unregistered unit assessment detection,Not audited,
+LMS-REG-021,REG,Result amendment requests,Not audited,
+LMS-REG-022,REG,Results release authorization,Not audited,
+LMS-REG-023,REG,Academic performance reports,Not audited,
+LMS-REG-024,REG,Graduation eligibility data,Not audited,
+LMS-REG-025,REG,Academic records audit trail,Not audited,
+LMS-LIB-001,LIB,Integrated digital library,Not audited,
+LMS-LIB-002,LIB,Library resource catalog,Not audited,
+LMS-LIB-003,LIB,Academic book catalog,Not audited,
+LMS-LIB-004,LIB,E-book integration,Not audited,
+LMS-LIB-005,LIB,Academic journal integration,Not audited,
+LMS-LIB-006,LIB,Research paper integration,Not audited,
+LMS-LIB-007,LIB,Open educational resource integration,Not audited,
+LMS-LIB-008,LIB,Library API integration,Not audited,
+LMS-LIB-009,LIB,Library resource search,Not audited,
+LMS-LIB-010,LIB,Search by course,Not audited,
+LMS-LIB-011,LIB,Search by unit,Not audited,
+LMS-LIB-012,LIB,Search by author,Not audited,
+LMS-LIB-013,LIB,Search by ISBN,Not audited,
+LMS-LIB-014,LIB,Search by subject,Not audited,
+LMS-LIB-015,LIB,Search by publication year,Not audited,
+LMS-LIB-016,LIB,Academic resource categorization,Not audited,
+LMS-LIB-017,LIB,Trainer resource recommendations,Not audited,
+LMS-LIB-018,LIB,Lesson-linked references,Not audited,
+LMS-LIB-019,LIB,Course reading lists,Not audited,
+LMS-LIB-020,LIB,Recommended textbooks,Not audited,
+LMS-LIB-021,LIB,Digital reading interface,Not audited,
+LMS-LIB-022,LIB,PDF reader,Not audited,
+LMS-LIB-023,LIB,Book bookmarking,Not audited,
+LMS-LIB-024,LIB,Personal reading notes,Not audited,
+LMS-LIB-025,LIB,Reading progress tracking,Not audited,
+LMS-LIB-026,LIB,Student resource collections,Not audited,
+LMS-LIB-027,LIB,Library access permissions,Not audited,
+LMS-LIB-028,LIB,Licensed resource access controls,Not audited,
+LMS-LIB-029,LIB,Library usage analytics,Not audited,
+LMS-LIB-030,LIB,Library resource availability monitoring,Not audited,
+LMS-LIB-031,LIB,Citation and reference tools,Not audited,
+LMS-LIB-032,LIB,Bibliography generation,Not audited,
+LMS-LIB-033,LIB,Trainer-curated resource lists,Not audited,
+LMS-LIB-034,LIB,Resource sharing within courses,Not audited,
+LMS-LIB-035,LIB,Library resource reporting,Not audited,
+LMS-LIVE-001,LIVE,Live classroom dashboard,Not audited,
+LMS-LIVE-002,LIVE,Live lesson scheduling,Not audited,
+LMS-LIVE-003,LIVE,Video conferencing integration,Not audited,
+LMS-LIVE-004,LIVE,Trainer live classroom creation,Not audited,
+LMS-LIVE-005,LIVE,Student classroom joining,Not audited,
+LMS-LIVE-006,LIVE,Live attendance tracking,Not audited,
+LMS-LIVE-007,LIVE,Interactive whiteboard,Not audited,
+LMS-LIVE-008,LIVE,Screen sharing,Not audited,
+LMS-LIVE-009,LIVE,Presentation sharing,Not audited,
+LMS-LIVE-010,LIVE,Live text chat,Not audited,
+LMS-LIVE-011,LIVE,Question and answer sessions,Not audited,
+LMS-LIVE-012,LIVE,Hand-raising functionality,Not audited,
+LMS-LIVE-013,LIVE,Polls during lessons,Not audited,
+LMS-LIVE-014,LIVE,Live quizzes,Not audited,
+LMS-LIVE-015,LIVE,Breakout rooms,Not audited,
+LMS-LIVE-016,LIVE,Group discussions,Not audited,
+LMS-LIVE-017,LIVE,Session recording,Not audited,
+LMS-LIVE-018,LIVE,Recording access permissions,Not audited,
+LMS-LIVE-019,LIVE,Recording library,Not audited,
+LMS-LIVE-020,LIVE,Attendance reports,Not audited,
+LMS-LIVE-021,LIVE,Live classroom notifications,Not audited,
+LMS-LIVE-022,LIVE,Trainer consultation sessions,Not audited,
+LMS-LIVE-023,LIVE,Virtual office hours,Not audited,
+LMS-LIVE-024,LIVE,Live session calendar,Not audited,
+LMS-LIVE-025,LIVE,Low-bandwidth video options,Not audited,
+LMS-LIVE-026,LIVE,Live session feedback,Not audited,
+LMS-LIVE-027,LIVE,Live lesson analytics,Not audited,
+LMS-LIVE-028,LIVE,Session replay,Not audited,
+LMS-LIVE-029,LIVE,Live lesson resource sharing,Not audited,
+LMS-LIVE-030,LIVE,Moodle live classroom integration,Not audited,
+LMS-COM-001,COM,Course discussion forums,Not audited,
+LMS-COM-002,COM,Unit discussion forums,Not audited,
+LMS-COM-003,COM,Topic-based discussions,Not audited,
+LMS-COM-004,COM,Trainer announcements,Not audited,
+LMS-COM-005,COM,Student discussion threads,Not audited,
+LMS-COM-006,COM,Student replies,Not audited,
+LMS-COM-007,COM,Discussion moderation,Not audited,
+LMS-COM-008,COM,Discussion search,Done (Batch 77),Backend + UI wired.
+LMS-COM-009,COM,Forum subscriptions,Done (Batch 77),Backend + UI wired.
+LMS-COM-010,COM,Direct trainer messaging,Not audited,
+LMS-COM-011,COM,Student-to-student messaging,Not audited,
+LMS-COM-012,COM,Group messaging,Not audited,
+LMS-COM-013,COM,Course-wide notifications,Done (Batch 77),Backend + UI wired.
+LMS-COM-014,COM,Email notifications,Not audited,
+LMS-COM-015,COM,In-platform notifications,Not audited,
+LMS-COM-016,COM,Mobile notifications,Not audited,
+LMS-COM-017,COM,Assessment reminders,Not audited,
+LMS-COM-018,COM,Assignment deadline reminders,Done (Batch 77),Backend + UI wired.
+LMS-COM-019,COM,New content notifications,Done (Batch 77),Backend + UI wired.
+LMS-COM-020,COM,Results release notifications,Done (Batch 77),Backend + UI wired.
+LMS-COM-021,COM,Scheduled notifications,Done (Batch 78),Course announcements can be scheduled and are delivered by the background job to enrolled learners.
+LMS-COM-022,COM,Notification preferences,Not audited,
+LMS-COM-023,COM,Student feedback surveys,Not audited,
+LMS-COM-024,COM,Trainer feedback surveys,Not audited,
+LMS-COM-025,COM,Student engagement reporting,Done (Batch 77),Backend + UI wired.
+LMS-COM-026,COM,Academic support requests,Not audited,
+LMS-COM-027,COM,Frequently asked questions,Not audited,
+LMS-COM-028,COM,Peer learning groups,Not audited,
+LMS-COM-029,COM,Collaborative workspaces,Not audited,
+LMS-COM-030,COM,Communication history,Not audited,
+LMS-GRD-001,GRD,Central gradebook,Done (Batch 77),Backend + UI wired.
+LMS-GRD-002,GRD,Course gradebook,Done (Batch 77),Backend + UI wired.
+LMS-GRD-003,GRD,Unit gradebook,Done (Batch 77),Backend + UI wired.
+LMS-GRD-004,GRD,Student individual gradebook,Done (Batch 77),Backend + UI wired.
+LMS-GRD-005,GRD,Assessment category creation,Done (Batch 77),Backend + UI wired.
+LMS-GRD-006,GRD,Continuous assessment weighting,Done (Batch 77),Backend + UI wired.
+LMS-GRD-007,GRD,Examination weighting,Done (Batch 77),Backend + UI wired.
+LMS-GRD-008,GRD,Assignment weighting,Done (Batch 77),Backend + UI wired.
+LMS-GRD-009,GRD,Practical assessment weighting,Done (Batch 77),Backend + UI wired.
+LMS-GRD-010,GRD,Custom grading scales,Not audited,
+LMS-GRD-011,GRD,Percentage-based grading,Done (Batch 77),Backend + UI wired.
+LMS-GRD-012,GRD,Numerical grading,Done (Batch 77),Backend + UI wired.
+LMS-GRD-013,GRD,Letter grading,Done (Batch 77),Backend + UI wired.
+LMS-GRD-014,GRD,Competency-based grading,Partial (Batch 77),PARTIAL: competency marking on assignments; not on assessments.
+LMS-GRD-015,GRD,Automated grade calculations,Done (Batch 77),Backend + UI wired.
+LMS-GRD-016,GRD,Weighted grade calculations,Done (Batch 77),Backend + UI wired.
+LMS-GRD-017,GRD,Missing grade detection,Done (Batch 77),Backend + UI wired.
+LMS-GRD-018,GRD,Incomplete assessment detection,Done (Batch 77),Backend + UI wired.
+LMS-GRD-019,GRD,Grade import,Done (Batch 77),"CSV (student_number,score,feedback) with dry run; assignments only."
+LMS-GRD-020,GRD,Grade export,Done (Batch 77),Backend + UI wired.
+LMS-GRD-021,GRD,Moodle grade synchronization,Not audited,
+LMS-GRD-022,GRD,Virtual Business Lab grade synchronization,Not audited,
+LMS-GRD-023,GRD,Grade change history,Done (Batch 77),From audit log for assignment/grade actions.
+LMS-GRD-024,GRD,Grade correction workflow,Not audited,
+LMS-GRD-025,GRD,Grade approval workflow,Not audited,
+LMS-GRD-026,GRD,Grade moderation,Partial (Batch 77),PARTIAL: assignment moderation only.
+LMS-GRD-027,GRD,Grade publication control,Partial (Batch 77),PARTIAL: assignment grades only; quizzes use their own release (Batch 76).
+LMS-GRD-028,GRD,Student grade visibility,Done (Batch 77),Backend + UI wired.
+LMS-GRD-029,GRD,Class average calculations,Done (Batch 77),Backend + UI wired.
+LMS-GRD-030,GRD,Assessment performance analysis,Done (Batch 77),Backend + UI wired.
+LMS-GRD-031,GRD,Student performance trends,Done (Batch 77),Backend + UI wired.
+LMS-GRD-032,GRD,Unit performance comparison,Done (Batch 77),Backend + UI wired.
+LMS-GRD-033,GRD,Assessment difficulty analysis,Done (Batch 77),Backend + UI wired.
+LMS-GRD-034,GRD,Competency attainment reports,Done (Batch 77),Backend + UI wired.
+LMS-GRD-035,GRD,Academic progress reports,Done (Batch 78),Printable HTML progress report added alongside the existing CSV and dashboard.
+LMS-GRD-036,GRD,Grade distribution visualization,Done (Batch 78),Accessible score histogram added to trainer class analysis.
+LMS-GRD-037,GRD,Grade audit trail,Done (Batch 77),Backend + UI wired.
+LMS-GRD-038,GRD,Grade discrepancy detection,Done (Batch 77),Backend + UI wired.
+LMS-GRD-039,GRD,Academic result summaries,Done (Batch 78),Printable per-student result document with an audit event and staff course-access check.
+LMS-GRD-040,GRD,Official results export,Not audited,
+LMS-AI-001,AI,AI learning assistant,Not audited,
+LMS-AI-002,AI,Course-aware AI assistant,Not audited,
+LMS-AI-003,AI,Lesson-based question answering,Not audited,
+LMS-AI-004,AI,Learning material summarization,Not audited,
+LMS-AI-005,AI,Study guide generation,Not audited,
+LMS-AI-006,AI,Revision notes generation,Not audited,
+LMS-AI-007,AI,Flashcard generation,Not audited,
+LMS-AI-008,AI,Practice question generation,Not audited,
+LMS-AI-009,AI,Quiz draft generation,Not audited,
+LMS-AI-010,AI,Examination question drafting,Not audited,
+LMS-AI-011,AI,Question difficulty suggestions,Not audited,
+LMS-AI-012,AI,Learning outcome mapping assistance,Not audited,
+LMS-AI-013,AI,Lesson structure suggestions,Not audited,
+LMS-AI-014,AI,Course content proofreading,Not audited,
+LMS-AI-015,AI,Lesson readability assistance,Not audited,
+LMS-AI-016,AI,Trainer lesson preparation assistant,Not audited,
+LMS-AI-017,AI,Assignment rubric drafting,Not audited,
+LMS-AI-018,AI,Student study planning,Not audited,
+LMS-AI-019,AI,Personalized revision suggestions,Not audited,
+LMS-AI-020,AI,Student knowledge gap identification,Not audited,
+LMS-AI-021,AI,Course resource recommendations,Not audited,
+LMS-AI-022,AI,Academic glossary generation,Not audited,
+LMS-AI-023,AI,Interactive tutoring,Not audited,
+LMS-AI-024,AI,Step-by-step educational explanations,Not audited,
+LMS-AI-025,AI,AI-generated practice scenarios,Not audited,
+LMS-AI-026,AI,AI support for case studies,Not audited,
+LMS-AI-027,AI,Multilingual learning assistance,Not audited,
+LMS-AI-028,AI,Text simplification,Not audited,
+LMS-AI-029,AI,Accessibility support,Not audited,
+LMS-AI-030,AI,AI usage analytics,Not audited,
+LMS-AI-031,AI,AI provider configuration,Not audited,
+LMS-AI-032,AI,AI API cost monitoring,Not audited,
+LMS-AI-033,AI,AI usage limits,Not audited,
+LMS-AI-034,AI,AI request queuing,Not audited,
+LMS-AI-035,AI,AI response caching,Not audited,
+LMS-AI-036,AI,AI service fallback,Not audited,
+LMS-AI-037,AI,AI-generated content review,Not audited,
+LMS-AI-038,AI,AI answer verification prompts,Not audited,
+LMS-AI-039,AI,AI-assisted feedback drafting,Not audited,
+LMS-AI-040,AI,Trainer approval of AI-generated materials,Not audited,
+LMS-PRG-001,PRG,Course progress dashboard,Done (Batch 77),Backend + UI wired.
+LMS-PRG-002,PRG,Lesson completion tracking,Done (Batch 77),Backend + UI wired.
+LMS-PRG-003,PRG,Unit completion tracking,Done (Batch 77),Backend + UI wired.
+LMS-PRG-004,PRG,Course completion tracking,Done (Batch 77),Backend + UI wired.
+LMS-PRG-005,PRG,Assessment completion tracking,Done (Batch 77),Backend + UI wired.
+LMS-PRG-006,PRG,Learning activity history,Done (Batch 77),Backend + UI wired.
+LMS-PRG-007,PRG,Student engagement metrics,Done (Batch 77),Backend + UI wired.
+LMS-PRG-008,PRG,Learning outcome mapping,Not audited,
+LMS-PRG-009,PRG,Competency framework,Not audited,
+LMS-PRG-010,PRG,Competency evidence collection,Not audited,
+LMS-PRG-011,PRG,Competency assessment,Not audited,
+LMS-PRG-012,PRG,Competency achievement records,Not audited,
+LMS-PRG-013,PRG,Competency gap identification,Not audited,
+LMS-PRG-014,PRG,Practical assessment tracking,Not audited,
+LMS-PRG-015,PRG,Virtual lab progress integration,Not audited,
+LMS-PRG-016,PRG,Industrial attachment tracking,Not audited,
+LMS-PRG-017,PRG,Workplace supervisor feedback,Not audited,
+LMS-PRG-018,PRG,Trainer competency verification,Not audited,
+LMS-PRG-019,PRG,Competency portfolio,Not audited,
+LMS-PRG-020,PRG,Student learning portfolio,Not audited,
+LMS-PRG-021,PRG,Course completion eligibility,Not audited,
+LMS-PRG-022,PRG,Certificate generation,Not audited,
+LMS-PRG-023,PRG,Certificate verification,Not audited,
+LMS-PRG-024,PRG,Digital badges,Not audited,
+LMS-PRG-025,PRG,Student achievement records,Not audited,
+LMS-PRG-026,PRG,Academic progression dashboard,Done (Batch 77),Backend + UI wired.
+LMS-PRG-027,PRG,At-risk student alerts,Not audited,
+LMS-PRG-028,PRG,Student support intervention tracking,Done (Batch 77),Backend + UI wired.
+LMS-PRG-029,PRG,Completion analytics,Done (Batch 77),Backend + UI wired.
+LMS-PRG-030,PRG,Academic progress export,Done (Batch 77),Backend + UI wired.
+LMS-SEC-001,SEC,Role-based access control,Not audited,
+LMS-SEC-002,SEC,Student permission isolation,Not audited,
+LMS-SEC-003,SEC,Trainer course-level permissions,Not audited,
+LMS-SEC-004,SEC,Administrator privilege management,Not audited,
+LMS-SEC-005,SEC,Secure authentication,Not audited,
+LMS-SEC-006,SEC,Single sign-on security,Not audited,
+LMS-SEC-007,SEC,Session management,Not audited,
+LMS-SEC-008,SEC,Session expiration,Not audited,
+LMS-SEC-009,SEC,Multi-factor authentication support,Not audited,
+LMS-SEC-010,SEC,Password recovery security,Not audited,
+LMS-SEC-011,SEC,API access control,Not audited,
+LMS-SEC-012,SEC,Secure file storage,Not audited,
+LMS-SEC-013,SEC,File upload validation,Not audited,
+LMS-SEC-014,SEC,Malware scanning integration,Not audited,
+LMS-SEC-015,SEC,Data encryption in transit,Not audited,
+LMS-SEC-016,SEC,Sensitive data encryption at rest,Not audited,
+LMS-SEC-017,SEC,Student data privacy controls,Not audited,
+LMS-SEC-018,SEC,Academic record access logging,Not audited,
+LMS-SEC-019,SEC,Administrative audit logs,Not audited,
+LMS-SEC-020,SEC,Assessment access logging,Not audited,
+LMS-SEC-021,SEC,Assessment change audit,Not audited,
+LMS-SEC-022,SEC,Suspicious activity monitoring,Not audited,
+LMS-SEC-023,SEC,Rate limiting,Not audited,
+LMS-SEC-024,SEC,API abuse prevention,Not audited,
+LMS-SEC-025,SEC,Automated backup scheduling,Not audited,
+LMS-SEC-026,SEC,Backup integrity verification,Not audited,
+LMS-SEC-027,SEC,Disaster recovery,Not audited,
+LMS-SEC-028,SEC,Data restoration testing,Not audited,
+LMS-SEC-029,SEC,Data retention policies,Not audited,
+LMS-SEC-030,SEC,Secure data deletion,Not audited,
+LMS-SEC-031,SEC,Privacy consent management,Not audited,
+LMS-SEC-032,SEC,Accessibility compliance monitoring,Not audited,
+LMS-SEC-033,SEC,Error monitoring,Not audited,
+LMS-SEC-034,SEC,Performance monitoring,Not audited,
+LMS-SEC-035,SEC,Database health monitoring,Not audited,
+LMS-SEC-036,SEC,Background task monitoring,Not audited,
+LMS-SEC-037,SEC,Synchronization failure alerts,Not audited,
+LMS-SEC-038,SEC,Automated system health checks,Not audited,
+LMS-SEC-039,SEC,Security incident reporting,Not audited,
+LMS-SEC-040,SEC,Security audit reporting,Not audited,
+LMS-ANL-001,ANL,Institutional LMS dashboard,Not audited,
+LMS-ANL-002,ANL,Total enrolled students,Not audited,
+LMS-ANL-003,ANL,Active student reporting,Not audited,
+LMS-ANL-004,ANL,Course enrollment analytics,Not audited,
+LMS-ANL-005,ANL,Departmental analytics,Not audited,
+LMS-ANL-006,ANL,Trainer workload analytics,Not audited,
+LMS-ANL-007,ANL,Course completion analytics,Not audited,
+LMS-ANL-008,ANL,Unit completion analytics,Not audited,
+LMS-ANL-009,ANL,Lesson engagement analytics,Not audited,
+LMS-ANL-010,ANL,Resource usage analytics,Not audited,
+LMS-ANL-011,ANL,Video lesson analytics,Not audited,
+LMS-ANL-012,ANL,Live classroom attendance analytics,Not audited,
+LMS-ANL-013,ANL,Quiz performance analytics,Not audited,
+LMS-ANL-014,ANL,Examination performance analytics,Not audited,
+LMS-ANL-015,ANL,Assignment performance analytics,Not audited,
+LMS-ANL-016,ANL,Grade distribution analytics,Not audited,
+LMS-ANL-017,ANL,Competency attainment analytics,Not audited,
+LMS-ANL-018,ANL,Student participation analytics,Not audited,
+LMS-ANL-019,ANL,Student inactivity alerts,Not audited,
+LMS-ANL-020,ANL,At-risk student analytics,Not audited,
+LMS-ANL-021,ANL,Learning resource effectiveness,Not audited,
+LMS-ANL-022,ANL,Trainer engagement analytics,Not audited,
+LMS-ANL-023,ANL,Academic progression analytics,Not audited,
+LMS-ANL-024,ANL,Semester performance reports,Not audited,
+LMS-ANL-025,ANL,Academic year comparisons,Not audited,
+LMS-ANL-026,ANL,Moodle integration analytics,Not audited,
+LMS-ANL-027,ANL,Virtual Business Lab analytics,Not audited,
+LMS-ANL-028,ANL,Student learning time reports,Not audited,
+LMS-ANL-029,ANL,Assessment completion reports,Not audited,
+LMS-ANL-030,ANL,Custom report builder,Not audited,
+LMS-ANL-031,ANL,PDF report generation,Not audited,
+LMS-ANL-032,ANL,Excel report generation,Not audited,
+LMS-ANL-033,ANL,CSV report export,Not audited,
+LMS-ANL-034,ANL,Scheduled report generation,Not audited,
+LMS-ANL-035,ANL,Authorized report sharing,Not audited,
+LMS-ACC-001,ACC,Responsive learning interface,Not audited,
+LMS-ACC-002,ACC,Mobile-first content display,Not audited,
+LMS-ACC-003,ACC,Screen reader compatibility,Not audited,
+LMS-ACC-004,ACC,Keyboard navigation,Not audited,
+LMS-ACC-005,ACC,Accessible lesson editor,Not audited,
+LMS-ACC-006,ACC,Image alternative text,Not audited,
+LMS-ACC-007,ACC,Video captions,Not audited,
+LMS-ACC-008,ACC,Transcripts for audio,Not audited,
+LMS-ACC-009,ACC,Adjustable text display,Not audited,
+LMS-ACC-010,ACC,Accessible document preview,Not audited,
+LMS-ACC-011,ACC,Low-bandwidth mode,Not audited,
+LMS-ACC-012,ACC,Reduced media loading,Not audited,
+LMS-ACC-013,ACC,Compressed learning resources,Not audited,
+LMS-ACC-014,ACC,Downloadable lessons,Not audited,
+LMS-ACC-015,ACC,Offline reading,Not audited,
+LMS-ACC-016,ACC,Offline progress synchronization,Not audited,
+LMS-ACC-017,ACC,Interrupted download recovery,Not audited,
+LMS-ACC-018,ACC,Slow connection handling,Not audited,
+LMS-ACC-019,ACC,Network interruption recovery,Not audited,
+LMS-ACC-020,ACC,Accessible assessment interfaces,Not audited,
+LMS-ACC-021,ACC,Approved assessment accommodations,Not audited,
+LMS-ACC-022,ACC,Accessible feedback display,Not audited,
+LMS-ACC-023,ACC,Accessible mathematical content,Not audited,
+LMS-ACC-024,ACC,Language support,Not audited,
+LMS-ACC-025,ACC,Accessibility testing reports,Not audited,
+LMS-DEV-001,DEV,Audit existing LMS features before development,Not audited,
+LMS-DEV-002,DEV,Preserve existing working functionality,Not audited,
+LMS-DEV-003,DEV,Use unique identifiers for all new features,Not audited,
+LMS-DEV-004,DEV,Map every feature code to its implementation,Not audited,
+LMS-DEV-005,DEV,Use reusable course and assessment components,Not audited,
+LMS-DEV-006,DEV,Implement role-specific dashboards,Not audited,
+LMS-DEV-007,DEV,Use a consistent database schema,Not audited,
+LMS-DEV-008,DEV,Implement secure API endpoints,Not audited,
+LMS-DEV-009,DEV,Implement server-side permission validation,Not audited,
+LMS-DEV-010,DEV,Implement database transaction management,Not audited,
+LMS-DEV-011,DEV,Implement background synchronization jobs,Not audited,
+LMS-DEV-012,DEV,Implement idempotent synchronization,Not audited,
+LMS-DEV-013,DEV,Implement synchronization retry mechanisms,Not audited,
+LMS-DEV-014,DEV,Implement structured error handling,Not audited,
+LMS-DEV-015,DEV,Implement audit logging,Not audited,
+LMS-DEV-016,DEV,Implement automated unit tests,Not audited,
+LMS-DEV-017,DEV,Implement API integration tests,Not audited,
+LMS-DEV-018,DEV,Implement end-to-end user workflow tests,Not audited,
+LMS-DEV-019,DEV,Implement automated accessibility tests,Not audited,
+LMS-DEV-020,DEV,Implement load and performance tests,Not audited,
+LMS-DEV-021,DEV,Implement backup and recovery tests,Not audited,
+LMS-DEV-022,DEV,Implement Moodle integration tests,Not audited,
+LMS-DEV-023,DEV,Implement grade reconciliation tests,Not audited,
+LMS-DEV-024,DEV,Implement automated regression testing,Not audited,
+LMS-DEV-025,DEV,Implement feature-level documentation,Not audited,
+LMS-DEV-026,DEV,Maintain a feature implementation registry,Not audited,
+LMS-DEV-027,DEV,Maintain a feature completion dashboard,Not audited,
+LMS-DEV-028,DEV,Implement environment-specific configurations,Not audited,
+LMS-DEV-029,DEV,Implement production deployment checks,Not audited,
+LMS-DEV-030,DEV,Implement post-deployment health monitoring,Not audited,

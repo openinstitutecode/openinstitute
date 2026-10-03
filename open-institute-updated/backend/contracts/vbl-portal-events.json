@@ -1,0 +1,118 @@
+{
+  "version": "v1",
+  "description": "Wire contract for events VBL sends to the KVBDTC portal (POST /api/integration/v1/webhooks/vbl). Identical copy lives in the portal repo at backend/contracts/. If you change one, change both and bump 'version'.",
+  "types": "string | number | boolean | object | string|null | number|null",
+  "events": {
+    "assessment.decided": {
+      "required": {
+        "eventId": "string",
+        "eventType": "string",
+        "portalStudentId": "string",
+        "registrationNumber": "string|null",
+        "unitId": "string",
+        "externalAssessmentId": "string",
+        "competencyCode": "string|null",
+        "outcome": "string",
+        "assessorLabUserId": "string",
+        "decidedAt": "string",
+        "attemptNo": "number",
+        "previousExternalAssessmentId": "string|null",
+        "evidence": "object"
+      },
+      "enums": {
+        "outcome": [
+          "COMPETENT",
+          "NOT_YET_COMPETENT"
+        ]
+      },
+      "example": {
+        "eventId": "evt_abc",
+        "eventType": "assessment.decided",
+        "portalStudentId": "stu_1",
+        "registrationNumber": "2026/BM5/000001",
+        "unitId": "unit_1",
+        "externalAssessmentId": "att_1",
+        "competencyCode": "C-1",
+        "outcome": "COMPETENT",
+        "feedback": "",
+        "assessorLabUserId": "u_9",
+        "decidedAt": "2026-09-28T10:00:00+00:00",
+        "attemptNo": 1,
+        "previousExternalAssessmentId": null,
+        "evidence": {
+          "evidenceId": "ev_1",
+          "version": 1,
+          "sourceType": "SCENARIO_ACTIVITY",
+          "sourceRef": "scenario:x",
+          "contentHash": "abc"
+        },
+        "criteria": [
+          {
+            "code": "CR-1",
+            "name": "Records transactions",
+            "met": true
+          },
+          {
+            "code": "CR-2",
+            "name": "Reconciles the ledger",
+            "met": false,
+            "comment": "Missed one entry"
+          }
+        ]
+      },
+      "optional": {
+        "feedback": "string",
+        "criteria": "array of {code:string, met:boolean, name?:string, comment?:string} \u2014 per-criterion verdicts (VBI027); portal ignores malformed entries"
+      }
+    },
+    "simulation.completed": {
+      "required": {
+        "eventId": "string",
+        "eventType": "string",
+        "portalStudentId": "string",
+        "registrationNumber": "string|null",
+        "unitId": "string",
+        "competenciesCompleted": "number",
+        "completedAt": "string"
+      },
+      "example": {
+        "eventId": "evt_abc_sim",
+        "eventType": "simulation.completed",
+        "portalStudentId": "stu_1",
+        "registrationNumber": "2026/BM5/000001",
+        "unitId": "unit_1",
+        "competenciesCompleted": 3,
+        "completedAt": "2026-09-28T10:00:00+00:00"
+      }
+    },
+    "activity.logged": {
+      "required": {
+        "eventId": "string",
+        "eventType": "string",
+        "portalStudentId": "string",
+        "activityType": "string",
+        "activityEntityType": "string",
+        "unitId": "string"
+      },
+      "example": {
+        "eventId": "evt_ev_activity",
+        "eventType": "activity.logged",
+        "portalStudentId": "stu_1",
+        "activityType": "evidence.capture",
+        "activityEntityType": "Evidence",
+        "unitId": "unit_1",
+        "activityRef": "scenario:invoice-run",
+        "activitySummary": "Started scenario: invoice run",
+        "occurredAt": "2026-09-28T10:00:00+00:00"
+      },
+      "optional": {
+        "registrationNumber": "string|null \u2014 used to find the student when portalStudentId is absent",
+        "activityRef": "string \u2014 Lab-side id of the thing the activity concerns",
+        "activitySummary": "string \u2014 one human-readable line (max 500 chars kept)",
+        "activityData": "object \u2014 free-form structured detail, stored as JSON",
+        "occurredAt": "string \u2014 ISO-8601; defaults to receipt time"
+      }
+    }
+  },
+  "revision": "2026-09-29 (batch 66: additive optional fields only \u2014 no v2 bump needed)"
+}

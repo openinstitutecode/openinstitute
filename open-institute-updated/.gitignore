@@ -1,0 +1,20 @@
+# Installed packages and generated build output
+**/node_modules/
+**/work/
+**/dist/
+**/coverage/
+**/.vite/
+**/*.tsbuildinfo
+
+# Local secrets and environment files (keep the checked-in examples)
+.env
+.env.*
+!.env.example
+!.env.compose.example
+**/.env
+**/.env.*
+!**/.env.example
+
+# Local runtime data
+*.log
+backend/storage/

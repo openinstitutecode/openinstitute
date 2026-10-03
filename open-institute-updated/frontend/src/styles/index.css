@@ -1,0 +1,102 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Batch 69 — KUX-012 dark mode. Tokens are space-separated RGB so Tailwind opacity modifiers keep working. */
+:root { --c-ink: 20 24 27; --c-paper: 247 245 239; --c-navy: var(--brand-navy, 27 58 75); --c-navy-dark: 18 39 51; --c-navy-light: 46 84 104; --c-line: 216 210 196; --c-surface: 255 255 255; }
+.dark { --c-ink: 232 230 224; --c-paper: 18 22 25; --c-navy: 143 184 207; --c-navy-dark: 176 208 226; --c-navy-light: 110 155 182; --c-line: 52 60 66; --c-surface: 27 33 37; color-scheme: dark; }
+.dark .bg-white { background-color: rgb(var(--c-surface)); }
+/* Official logo: blends into the light page; on the dark theme it sits on a white chip so the navy lettering stays legible. */
+.brand-logo { mix-blend-mode: multiply; }
+.dark .brand-logo { mix-blend-mode: normal; background: #fff; border-radius: 6px; padding: 3px; }
+.dark .bg-red-50 { background-color: rgb(80 30 30 / 0.35); }
+.dark .bg-red-100 { background-color: rgb(120 40 40 / 0.35); }
+.dark .text-red-700 { color: rgb(252 165 165); }
+.dark .border-red-200 { border-color: rgb(127 29 29); }
+
+@layer base {
+  * {
+    @apply border-line;
+  }
+  body {
+    @apply bg-paper text-ink antialiased;
+    font-feature-settings: "ss01" 1;
+  }
+  h1, h2, h3, h4 {
+    @apply font-display text-ink;
+  }
+  :focus-visible {
+    outline: 2px solid theme("colors.navy.DEFAULT");
+    outline-offset: 2px;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      animation-duration: 0.001ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.001ms !important;
+    }
+  }
+}
+
+@layer components {
+  .container-page {
+    @apply mx-auto w-full max-w-6xl px-6 sm:px-8;
+  }
+  .btn-primary {
+    @apply inline-flex items-center gap-2 rounded-sm bg-navy px-5 py-3 text-sm font-medium text-paper transition-colors hover:bg-navy-dark;
+  }
+  .btn-secondary {
+    @apply inline-flex items-center gap-2 rounded-sm border border-ink/20 bg-transparent px-5 py-3 text-sm font-medium text-ink transition-colors hover:border-ink/50;
+  }
+  .eyebrow {
+    @apply font-mono text-xs tracking-wide text-navy/70;
+  }
+  .input {
+    @apply w-full rounded-sm border border-line bg-white px-3.5 py-2.5 text-sm text-ink placeholder:text-ink/35 focus:border-navy;
+  }
+}
+
+/* Printing / Save-as-PDF: drop the portal sidebar + top bar (a breakpoint utility like lg:block could otherwise win on wide paper) so the page prints as a clean document under the college letterhead. */
+@media print {
+  .portal-chrome { display: none !important; }
+  main { padding: 0 !important; }
+  img { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+}
+
+/* ---- Printable transcript (pages/TranscriptView.tsx). Always a light "paper" sheet, even in dark mode. ---- */
+.transcript-page { min-height: 100vh; background: rgb(var(--c-paper)); padding: 16px; }
+.transcript-toolbar { display: flex; justify-content: space-between; max-width: 820px; margin: 0 auto 12px; }
+.transcript-notice { max-width: 820px; margin: 24px auto; font-size: 14px; }
+.transcript-sheet { max-width: 820px; margin: 0 auto; background: #fff; color: #111; padding: 40px 44px; box-shadow: 0 1px 6px rgba(0,0,0,.12); font-family: Inter, system-ui, sans-serif; font-size: 13px; line-height: 1.45; }
+.transcript-sheet h1, .transcript-sheet h2 { color: #0b1d3a; font-family: inherit; }
+.transcript-head { display: flex; align-items: center; gap: 18px; padding-bottom: 14px; border-bottom: 3px solid #0b3a8a; }
+.transcript-head img { height: 84px; width: auto; }
+.transcript-head h1 { margin: 0; font-size: 22px; font-weight: 800; letter-spacing: .03em; text-transform: uppercase; }
+.transcript-head p { margin: 2px 0 0; font-size: 14px; color: #444; letter-spacing: .06em; text-transform: uppercase; }
+.transcript-meta { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 28px; margin: 18px 0 8px; }
+.transcript-meta span { display: block; font-size: 10.5px; color: #666; text-transform: uppercase; letter-spacing: .05em; }
+.transcript-meta strong { font-size: 13.5px; font-weight: 600; }
+.transcript-block { margin-top: 18px; break-inside: avoid; }
+.transcript-block h2 { margin: 0 0 6px; font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; }
+.transcript-sheet table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+.transcript-sheet th:first-child, .transcript-sheet td:first-child { width: 20%; }
+.transcript-sheet th.right, .transcript-sheet td.right { width: 22%; }
+.transcript-sheet th, .transcript-sheet td { text-align: left; padding: 6px 8px; border-bottom: 1px solid #d5d5d5; }
+.transcript-sheet thead th { background: #eef2f8; border-bottom: 1px solid #9aa8c0; font-size: 11px; text-transform: uppercase; letter-spacing: .04em; }
+.transcript-sheet .right { text-align: right; }
+.transcript-sheet .mono { font-family: "IBM Plex Mono", ui-monospace, monospace; font-size: 12px; }
+.transcript-sheet .muted { color: #666; }
+.transcript-summary { margin: 18px 0 2px; font-weight: 600; }
+.transcript-key { margin: 0; font-size: 11.5px; }
+.transcript-empty { margin-top: 18px; color: #666; }
+.transcript-alert { margin: 0 0 14px; padding: 8px 12px; border: 2px solid #a11; color: #a11; font-weight: 700; }
+.transcript-foot { display: flex; align-items: center; gap: 16px; margin-top: 26px; padding-top: 14px; border-top: 1px solid #bbb; font-size: 11.5px; color: #444; break-inside: avoid; }
+.transcript-foot img { flex: none; }
+.transcript-foot p { margin: 0; overflow-wrap: anywhere; }
+@page { size: A4; margin: 14mm; }
+@media print {
+  .transcript-page { background: #fff; padding: 0; }
+  .transcript-sheet { box-shadow: none; padding: 0; max-width: none; }
+  .transcript-sheet, .transcript-sheet * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+}
+@media (max-width: 560px) { .transcript-sheet { padding: 24px 18px; } .transcript-meta { grid-template-columns: 1fr; } .transcript-head img { height: 64px; } }

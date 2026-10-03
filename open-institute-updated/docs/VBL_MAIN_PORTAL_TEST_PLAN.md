@@ -1,0 +1,5 @@
+# Test plan & how to run
+Lab (Python, stdlib): `cd backend && PYTHONPATH=.:tests python3 -m unittest discover -s tests -t . -p "test_*.py"` (takes >5 min; split across processes if your runner has a time limit).
+Portal pure-logic tests (no database): `npm test`. Portal Postgres tests (**batch 66: replace the old in-memory fakes; skip themselves unless `TEST_DATABASE_URL` is set**): `createdb kvbdtc_test && DATABASE_URL=postgresql://.../kvbdtc_test npx prisma db push && TEST_DATABASE_URL=postgresql://.../kvbdtc_test npm run test:db`. The database name must contain "test" — the harness TRUNCATEs it.
+Cross-system E2E (needs `npm install`, `npx prisma generate`, a throwaway Postgres named *e2e*/*test*): `E2E_DATABASE_URL=postgresql://.../kvbdtc_e2e VBL_REPO=<path to virtual-business-lab> python3 e2e/run_e2e.py`.
+**Not covered by any test and must be done on a real stack:** `prisma validate/migrate`, Prisma query correctness, Express/FastAPI route glue, the two frontends, real network between hosts, multi-instance rate limiting.
