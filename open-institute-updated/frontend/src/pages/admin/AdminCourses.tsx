@@ -8,7 +8,7 @@ const links = [
   { to: "/admin/dashboard", label: "Dashboard" },
   { to: "/admin/curriculum", label: "Curriculum" },
   { to: "/admin/learning-paths", label: "Learning Paths" },
-  { to: "/admin/courses", label: "Courses & Moodle" },
+  { to: "/admin/courses", label: "Courses & Trainers" },
   { to: "/admin/trainers", label: "Trainers & HR" },
   { to: "/admin/students", label: "Students" },
   { to: "/admin/support-tickets", label: "Support Tickets" },
@@ -114,6 +114,20 @@ export default function AdminCourses() {
       setSavingTrainerFor(null);
     }
   }
+
+  async function deleteCourse(course: CourseRow) {
+    if (!window.confirm(`Delete "${course.title}"? Courses with content, assessments, or student records cannot be deleted.`)) return;
+    setError(null);
+    setNotice(null);
+    try {
+      await apiFetch(`/courses/${course.id}`, { method: "DELETE" });
+      setNotice(`Course "${course.title}" deleted.`);
+      load();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not delete this course.");
+    }
+  }
+
   useEffect(load, []);
   useEffect(() => {
     apiFetch<{ role: string }>("/me/whoami")
@@ -389,6 +403,9 @@ export default function AdminCourses() {
                       )}
                       {canManageCourses && <button onClick={() => startEdit(c)} className="text-xs font-medium text-navy hover:underline">
                         Edit
+                      </button>}
+                      {canManageCourses && <button onClick={() => void deleteCourse(c)} className="text-xs font-medium text-red-700 hover:underline">
+                        Delete
                       </button>}
                       {canManageCourses && <button onClick={() => setCatalogueCourseId(catalogueCourseId === c.id ? null : c.id)} className="text-xs font-medium text-navy hover:underline">
                         {catalogueCourseId === c.id ? "Close catalogue" : "Catalogue"}

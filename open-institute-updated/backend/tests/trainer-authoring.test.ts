@@ -15,7 +15,10 @@ function registeredRoutes(router: { stack: Array<{ route?: { path: string; metho
 
 test("course and registrar workflows expose trainer assignment and course-note CRUD", () => {
   const routes = registeredRoutes(coursesRouter);
+  assert.ok(routes.includes("GET /"));
+  assert.ok(routes.includes("GET /admin/form-options"));
   assert.ok(routes.includes("PATCH /:id/trainer"));
+  assert.ok(routes.includes("DELETE /:id"));
   assert.ok(routes.includes("POST /:courseId/announcements"));
   assert.ok(routes.includes("GET /:courseId/announcements"));
   assert.ok(routes.includes("PATCH /:courseId/announcements/:announcementId"));

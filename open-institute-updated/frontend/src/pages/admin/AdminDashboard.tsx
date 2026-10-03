@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import PortalShell from "../../components/portal/PortalShell";
 import { PortalSection, Table, Badge } from "../../components/portal/Primitives";
 import { apiFetch, useCurrentUserName } from "../../lib/api";
@@ -24,7 +25,7 @@ const links = [
   { to: "/admin/exams", label: "Examinations" },
   { to: "/admin/results-approval", label: "Results Approval" },
   { to: "/admin/curriculum", label: "Curriculum" },
-  { to: "/admin/courses", label: "Courses & Moodle" },
+  { to: "/admin/courses", label: "Courses & Trainers" },
   { to: "/admin/library", label: "Digital Library" },
   { to: "/admin/library-admin", label: "Library Administration" },
   { to: "/admin/finance", label: "Finance" },
@@ -101,6 +102,16 @@ export default function AdminDashboard() {
       </p>
 
       {error && <p className="mt-6 text-sm text-navy-dark">{error}</p>}
+
+      <div className="mt-6 flex flex-wrap items-center justify-between gap-4 border border-line bg-white p-5">
+        <div>
+          <h2 className="font-display text-lg">Course management</h2>
+          <p className="mt-1 text-sm text-ink/60">
+            Create or remove courses and assign trainers from Courses &amp; Trainers.
+          </p>
+        </div>
+        <Link to="/admin/courses" className="btn-primary">Manage courses &amp; trainers</Link>
+      </div>
 
       <div className="mt-8">
         <PortalSection title="Enrollment by programme">

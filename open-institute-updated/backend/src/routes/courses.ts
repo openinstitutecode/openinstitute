@@ -381,6 +381,65 @@ coursesRouter.patch("/:id/trainer", requireAuth, requireRole(...COURSE_ASSIGNMEN
   res.json(course);
 });
 
+coursesRouter.delete("/:id", requireAuth, requireRole(...ADMIN_COURSE_ROLES), async (req: AuthedRequest, res) => {
+  const result = await prisma.$transaction(async (tx) => {
+    const course = await tx.course.findUnique({
+      where: { id: req.params.id },
+      include: {
+        _count: {
+          select: {
+            modules: true,
+            assignments: true,
+            assessments: true,
+            attendanceRecords: true,
+            timetableEntries: true,
+            forums: true,
+            feedback: true,
+            studyGroups: true,
+            certificates: true,
+            announcements: true,
+            liveClasses: true,
+            examBoardRatifications: true,
+            approvals: true,
+          },
+        },
+        catalogueEntry: { select: { id: true } },
+        deliveryPlan: { select: { id: true } },
+        completionRule: { select: { id: true } },
+      },
+    });
+    if (!course) return { kind: "missing" as const };
+    const dependencies = Object.entries(course._count)
+      .filter(([, count]) => count > 0)
+      .map(([name, count]) => `${count} ${name}`);
+    if (course.catalogueEntry) dependencies.push("catalogue entry");
+    if (course.deliveryPlan) dependencies.push("delivery plan");
+    if (course.completionRule) dependencies.push("completion rule");
+    if (dependencies.length > 0) return { kind: "in-use" as const, dependencies };
+
+    await tx.course.delete({ where: { id: course.id } });
+    await tx.auditLog.create({
+      data: {
+        userId: req.user!.id,
+        action: "COURSE_DELETED",
+        entityType: "Course",
+        entityId: course.id,
+        metadata: { title: course.title, unitId: course.unitId, trainerId: course.trainerId },
+      },
+    });
+    return { kind: "deleted" as const };
+  });
+
+  if (result.kind === "missing") return res.status(404).json({ message: "Course not found." });
+  if (result.kind === "in-use") {
+    return res.status(409).json({
+      message: `This course cannot be deleted because it has associated records: ${result.dependencies.join(", ")}. Unpublish it or remove/archive its records first.`,
+      dependencies: result.dependencies,
+    });
+  }
+  res.status(204).send();
+});
+
 // ---------------------------------------------------------------------------
 // QA014 — course approval: publishing a course above was previously a flag
 // any ADMIN_COURSE_ROLES user could flip directly (PATCH /:id { published }),

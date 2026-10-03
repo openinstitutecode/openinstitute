@@ -23,7 +23,7 @@ const links = [
   { to: "/admin/exams", label: "Examinations" },
   { to: "/admin/results-approval", label: "Results Approval" },
   { to: "/admin/curriculum", label: "Curriculum" },
-  { to: "/admin/courses", label: "Courses & Moodle" },
+  { to: "/admin/courses", label: "Courses & Trainers" },
   { to: "/admin/library", label: "Digital Library" },
   { to: "/admin/library-admin", label: "Library Administration" },
   { to: "/admin/finance", label: "Finance" },
