@@ -25,7 +25,7 @@ server {
     add_header Permissions-Policy "camera=(self), microphone=(self), geolocation=()" always;
 
     location /api/ {
-        proxy_pass ${API_UPSTREAM}/api/;
+        proxy_pass http://${API_UPSTREAM}/api/;
         proxy_request_buffering off;
         proxy_read_timeout 600s;
         proxy_send_timeout 600s;

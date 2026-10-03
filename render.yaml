@@ -1,0 +1,52 @@
+services:
+  - type: pserv
+    name: openinstitute-backend
+    runtime: docker
+    region: frankfurt
+    plan: 0.5c-512mb
+    rootDir: open-institute-updated/backend
+    dockerfilePath: open-institute-updated/backend/Dockerfile
+    dockerContext: open-institute-updated/backend
+    maxShutdownDelaySeconds: 120
+    disk:
+      name: uploads
+      mountPath: /app/uploads
+      sizeGB: 10
+    envVars:
+      - key: PORT
+        value: "10000"
+      - key: NODE_ENV
+        value: production
+      - key: TRUST_PROXY
+        value: "1"
+      - key: UPLOAD_DIR
+        value: /app/uploads
+      - key: DATABASE_URL
+        sync: false
+      - key: JWT_SECRET
+        generateValue: true
+      - key: FRONTEND_ORIGIN
+        fromService:
+          type: web
+          name: openinstitute-frontend
+          envVarKey: RENDER_EXTERNAL_URL
+      - key: SEED_ADMIN_EMAIL
+        sync: false
+      - key: SEED_ADMIN_PASSWORD
+        sync: false
+
+  - type: web
+    name: openinstitute-frontend
+    runtime: docker
+    region: frankfurt
+    plan: free
+    rootDir: open-institute-updated/frontend
+    dockerfilePath: open-institute-updated/frontend/Dockerfile
+    dockerContext: open-institute-updated/frontend
+    healthCheckPath: /
+    envVars:
+      - key: API_UPSTREAM
+        fromService:
+          type: pserv
+          name: openinstitute-backend
+          property: hostport

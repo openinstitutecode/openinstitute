@@ -66,6 +66,32 @@ If a database password or connection URI has already been pasted into chat, emai
 4. If they are inside another directory in the repository, include that parent directory in each Render **Root Directory** (for example, `open-institute-updated/backend` and `open-institute-updated/frontend`).
 5. Do not add `.env`, passwords, database URIs, or local environment files to Git. The checked-in `.env.example` files are templates only.
 
+### Recommended: deploy with the Render Blueprint
+
+The repository includes a Blueprint at its Git root: [`render.yaml`](../../render.yaml). It creates the private backend, public frontend, private-network proxy connection, backend upload disk, and generated JWT secret. You do not need to create the services individually.
+
+1. Push the commit containing `render.yaml` and the application files to the branch you want to deploy.
+2. In [Render Dashboard](https://dashboard.render.com), choose **New → Blueprint** (or **New → Blueprint Instance**, depending on the current dashboard label).
+3. Connect/select the GitHub repository and select the branch containing `render.yaml`.
+4. Render should detect `render.yaml` at the repository root. If it asks for a Blueprint file path, enter `render.yaml`. Do not set the Blueprint file path to a Dockerfile or to an application subdirectory.
+5. Choose the Render workspace and confirm the resource plan, Frankfurt region, and 10 GB backend uploads disk. The backend plan and disk are paid resources; check the displayed price before confirming. The frontend is configured on Render's free plan and may spin down when idle.
+6. During the first Blueprint creation, Render prompts for the values marked `sync: false`. Enter:
+   - `DATABASE_URL`: the fresh, rotated Supabase session-pooler URI from Part 1.
+   - `SEED_ADMIN_EMAIL`: the admin email you want to use.
+   - `SEED_ADMIN_PASSWORD`: a new strong admin password; use 14+ characters, even though the seed enforces 8.
+7. Review the Blueprint's proposed changes and click **Apply** / **Create Blueprint**.
+8. Render creates both services. Blueprint references automatically set the backend `FRONTEND_ORIGIN` from the frontend's Render URL and set the frontend `API_UPSTREAM` from the backend's private `hostport`; do not manually enter either value.
+9. Open each service's **Events/Deploys** page. Wait for backend migrations and seed to finish and both services to become healthy/live.
+10. Verify `https://<frontend-service>.onrender.com/api/ready` returns HTTP 200. Then open the frontend URL and test admin sign-in.
+
+The `sync: false` secrets are only prompted during initial Blueprint creation. If adding a new secret to `render.yaml` later, enter it manually in that service's **Environment** page. Updating an existing service's secrets through the Blueprint will not prompt again.
+
+The Blueprint uses the Render region `frankfurt` so both services can communicate over Render's private network. If changing the region, change it for both services in `render.yaml` before the initial sync.
+
+For a custom domain, add the domain to the frontend web service in Render after the first deployment. Then update the backend's `FRONTEND_ORIGIN` in its Render **Environment** settings to the exact `https://` custom-domain origin and redeploy the backend.
+
+If a Blueprint deploy is not desired, you can instead create the two services manually using Parts 3–5 below.
+
 ## Part 3 — Create the public frontend service on Render
 
 Create the frontend first so its public URL is available for the backend's allowed-origin setting.
@@ -76,13 +102,13 @@ Create the frontend first so its public URL is available for the backend's allow
 4. In the service setup form, set:
    - **Name:** for example, `openinstitute-frontend`.
    - **Region:** select the same region you plan to use for the backend, preferably near the Supabase region.
-   - **Root Directory:** `frontend` (or the repository-relative path determined in Part 2).
+   - **Root Directory:** `open-institute-updated/frontend` for this repository layout.
    - **Runtime/Language:** **Docker**.
-   - **Dockerfile Path:** `Dockerfile` (relative to the frontend root directory).
-   - **Docker Context Directory:** `.` / the frontend root directory. If Render displays a path relative to the repository instead, use the `frontend` directory. The frontend Dockerfile expects `package.json` and `package-lock.json` in its build context.
+   - **Dockerfile Path:** `open-institute-updated/frontend/Dockerfile` (relative to the Git repository root).
+   - **Docker Context Directory:** `open-institute-updated/frontend` (relative to the Git repository root). The frontend Dockerfile expects `package.json` and `package-lock.json` in this context.
    - **Instance Type:** choose a plan that suits the deployment. Confirm current Render pricing and limitations; do not assume a free instance provides production uptime or persistent storage.
 5. Under **Advanced → Environment Variables**, add:
-   - `API_UPSTREAM` = `http://127.0.0.1:10000`
+   - `API_UPSTREAM` = `127.0.0.1:10000`
 
    This is a temporary valid upstream that allows the frontend to deploy before the backend exists. API requests will not work yet. You will replace this value with the Render private address in Part 4.
 6. Under **Health Check Path**, if shown, set `/`. The frontend serves the SPA at `/`.
@@ -98,10 +124,10 @@ Do not share this temporary site with users yet. Its `/api` proxy is not connect
 3. Configure:
    - **Name:** for example, `openinstitute-backend`.
    - **Region:** exactly the same Render region as the frontend (Render private networking requires services in the same region and workspace).
-   - **Root Directory:** `backend` (or the repository-relative path determined in Part 2).
+   - **Root Directory:** `open-institute-updated/backend` for this repository layout.
    - **Runtime/Language:** **Docker**.
-   - **Dockerfile Path:** `Dockerfile` (relative to the backend root directory).
-   - **Docker Context Directory:** `.` / the backend root directory. The backend Dockerfile expects its package files and Prisma directory in this context.
+   - **Dockerfile Path:** `open-institute-updated/backend/Dockerfile` (relative to the Git repository root).
+   - **Docker Context Directory:** `open-institute-updated/backend` (relative to the Git repository root). The backend Dockerfile expects its package files and Prisma directory in this context.
    - **Instance Type:** choose a suitable plan. The API must stay available to serve the frontend.
 4. Set the following backend environment variables in the Render service's **Environment** page. Add each as a separate key/value entry:
 
@@ -140,13 +166,13 @@ The private service accepts Render's TCP health checks. The Docker image also in
 ## Part 5 — Connect the frontend to the private API
 
 1. Return to the frontend **Web Service → Environment** page in Render.
-2. Edit `API_UPSTREAM` to use the backend's actual Render **Internal Address**, with the `http://` scheme and port `10000`. For example:
+2. Edit `API_UPSTREAM` to use the backend's actual Render **Internal Address** host and port, without a scheme. For example:
 
    ```text
-   http://openinstitute-backend:10000
+   openinstitute-backend:10000
    ```
 
-   The example hostname is illustrative. Use the internal address copied from your backend's **Connect** menu exactly.
+   The example hostname is illustrative. Use the internal address copied from your backend's **Connect** menu exactly. The nginx template adds `http://` itself.
 3. Save the environment change and let Render redeploy the frontend. The frontend nginx configuration uses `API_UPSTREAM` to proxy same-origin `/api/...` requests to the backend.
 4. Wait for the frontend deployment to become live. The backend and frontend must remain in the same Render region and workspace for this private connection.
 
@@ -226,8 +252,8 @@ The seed is idempotent. It creates the super-admin on the first deployment if th
 | Backend deploy fails with Prisma `P1001` or cannot reach database | Re-copy the Supabase **Session pooler** URI; verify host, port, username, encoded password, and that network restrictions are not blocking Render. |
 | Backend fails environment validation | Ensure `NODE_ENV=production`, a valid `DATABASE_URL`, `FRONTEND_ORIGIN` with `https://`, and a random `JWT_SECRET` at least 32 characters long. |
 | Prisma migration fails | Read the complete backend deploy log. Do not manually create tables in SQL Editor. Verify the database is new/managed by this Prisma migration history and that the database user can create/alter objects. |
-| Backend is running but frontend `/api` returns 502 | Verify both services are in the same Render region/workspace and frontend `API_UPSTREAM` is the backend's exact internal address with `http://` and port `10000`; redeploy the frontend after changing it. |
-| Frontend Docker deploy fails during nginx startup | Ensure `API_UPSTREAM` is set to a valid `http://host:10000` URL; it must not be blank. |
+| Backend is running but frontend `/api` returns 502 | Verify both services are in the same Render region/workspace and frontend `API_UPSTREAM` is the backend's exact internal address with port `10000` and no URL scheme; redeploy the frontend after changing it. |
+| Frontend Docker deploy fails during nginx startup | Ensure `API_UPSTREAM` is a valid `host:10000` value with no URL scheme. The Docker image defaults to `127.0.0.1:10000`, which is only a startup fallback, not a working backend connection. |
 | Browser reports CORS errors | Set backend `FRONTEND_ORIGIN` to the exact browser origin (scheme + hostname, no path), save, and wait for backend redeploy. |
 | Admin login fails after changing Render seed variables | The seed does not update an existing account's password. Use the password recovery procedure; do not expect a redeploy to reset it. |
 | Uploads disappear or upload routes fail | Confirm a persistent disk is mounted at `/app/uploads`, the backend has disk capacity, and the selected plan supports persistent disks. |
