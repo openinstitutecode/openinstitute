@@ -34,20 +34,25 @@ export function CoursePicker({
   label = "Course",
   className = "",
   courses: provided,
+  initialCourseId,
 }: {
   value: string;
   onChange: (courseId: string, course: CourseOption | null) => void;
   label?: string;
   className?: string;
   courses?: { courses: CourseOption[] | null; error: string | null };
+  initialCourseId?: string;
 }) {
   const own = useCourseOptions();
   const { courses, error } = provided ?? own;
 
-  // With exactly one course there's nothing to choose — select it.
+  // A course card can deep-link into a builder while preserving the selected course.
   useEffect(() => {
-    if (courses && courses.length === 1 && !value) onChange(courses[0].id, courses[0]);
-  }, [courses, value, onChange]);
+    if (!courses || value) return;
+    const initial = courses.find((course) => course.id === initialCourseId);
+    if (initial) onChange(initial.id, initial);
+    else if (courses.length === 1) onChange(courses[0].id, courses[0]);
+  }, [courses, value, onChange, initialCourseId]);
 
   return (
     <label className={`block ${className}`}>

@@ -19,6 +19,7 @@ export const coursesRouter = Router();
 // permission story for "who can flip a course into Moodle mode"
 // stays in exactly one place.
 const ADMIN_COURSE_ROLES = ["SUPER_ADMIN", "ICT_ADMIN", "PROGRAMME_COORDINATOR", "DEPARTMENT_HEAD"];
+const COURSE_ASSIGNMENT_ROLES = [...ADMIN_COURSE_ROLES, "REGISTRAR"];
 
 // Real course content for the LMS view — modules, lessons, and the
 // requesting student's own progress markers (based on completed
@@ -155,7 +156,7 @@ coursesRouter.post("/:id/moodle-launch", requireAuth, async (req: AuthedRequest,
 // Full listing for the admin table — every course regardless of
 // catalogue visibility or publish state, with the fields the dashboard
 // needs to show a Moodle status column without a second round trip.
-coursesRouter.get("/", requireAuth, requireRole(...ADMIN_COURSE_ROLES), async (_req, res) => {
+coursesRouter.get("/", requireAuth, requireRole(...COURSE_ASSIGNMENT_ROLES), async (_req, res) => {
   const courses = await prisma.course.findMany({
     include: { unit: { include: { programme: true } }, trainer: true },
     orderBy: { title: "asc" },
@@ -167,7 +168,7 @@ coursesRouter.get("/", requireAuth, requireRole(...ADMIN_COURSE_ROLES), async (_
 // the unit and trainer pickers, plus whether this deployment even has
 // Moodle configured — the form disables/explains the MOODLE option
 // rather than letting an admin pick it and silently get nothing.
-coursesRouter.get("/admin/form-options", requireAuth, requireRole(...ADMIN_COURSE_ROLES), async (_req, res) => {
+coursesRouter.get("/admin/form-options", requireAuth, requireRole(...COURSE_ASSIGNMENT_ROLES), async (_req, res) => {
   const [units, trainers] = await Promise.all([
     prisma.unit.findMany({ include: { programme: true }, orderBy: { code: "asc" } }),
     prisma.trainer.findMany({ orderBy: { fullName: "asc" } }),
@@ -336,6 +337,48 @@ coursesRouter.patch("/:id", requireAuth, requireRole(...ADMIN_COURSE_ROLES), asy
   } catch (err: any) {
     res.status(400).json({ message: "Could not update course.", detail: err?.message });
   }
+});
+
+coursesRouter.patch("/:id/trainer", requireAuth, requireRole(...COURSE_ASSIGNMENT_ROLES), async (req: AuthedRequest, res) => {
+  const parsed = z.object({ trainerId: z.string().min(1).nullable() }).safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ message: "Provide a trainer id or null to unassign the trainer." });
+  const existing = await prisma.course.findUnique({
+    where: { id: req.params.id },
+    select: { id: true, trainerId: true },
+  });
+  if (!existing) return res.status(404).json({ message: "Course not found." });
+  if (parsed.data.trainerId && !(await prisma.trainer.findUnique({ where: { id: parsed.data.trainerId }, select: { id: true } }))) {
+    return res.status(400).json({ message: "That trainer profile does not exist." });
+  }
+
+  const course = await prisma.course.update({
+    where: { id: existing.id },
+    data: { trainerId: parsed.data.trainerId },
+    include: { trainer: { select: { id: true, fullName: true } }, unit: { select: { id: true, code: true, vblEnabled: true } } },
+  });
+  await prisma.auditLog.create({
+    data: {
+      userId: req.user!.id,
+      action: "COURSE_TRAINER_ASSIGNED",
+      entityType: "Course",
+      entityId: course.id,
+      metadata: { fromTrainerId: existing.trainerId, toTrainerId: course.trainerId },
+    },
+  });
+  if (course.unit.vblEnabled && course.trainer && course.trainerId !== existing.trainerId) {
+    emitPortalEvent({
+      eventType: "staff.assigned",
+      entityType: "Course",
+      entityId: course.id,
+      payload: {
+        portalTrainerId: course.trainer.id,
+        trainerName: course.trainer.fullName,
+        unitId: course.unit.id,
+        unitCode: course.unit.code,
+      },
+    }).catch((err) => console.error("Failed to queue staff.assigned for VBL sync", err));
+  }
+  res.json(course);
 });
 
 // ---------------------------------------------------------------------------
@@ -560,6 +603,42 @@ coursesRouter.get("/:courseId/announcements", requireAuth, async (req: AuthedReq
   } catch (error: any) {
     res.status(400).json({ error: error.message });
   }
+});
+
+const announcementUpdateSchema = z.object({
+  title: z.string().trim().min(3).max(100).optional(),
+  content: z.string().trim().min(3).max(4000).optional(),
+  importance: z.enum(["low", "normal", "high", "urgent"]).optional(),
+}).refine((data) => Object.keys(data).length > 0);
+
+coursesRouter.patch("/:courseId/announcements/:announcementId", requireAuth, requireRole("TRAINER"), async (req: AuthedRequest, res) => {
+  const parsed = announcementUpdateSchema.safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ error: "Provide at least one valid note field to update." });
+  if (!(await canTeachCourse(req.user!, req.params.courseId))) {
+    return res.status(403).json({ error: "You don't teach this course." });
+  }
+  const trainer = await prisma.trainer.findUnique({ where: { userId: req.user!.id }, select: { id: true } });
+  const existing = await prisma.courseAnnouncement.findFirst({
+    where: { id: req.params.announcementId, courseId: req.params.courseId, trainerId: trainer?.id },
+  });
+  if (!existing) return res.status(404).json({ error: "Course note not found." });
+  res.json(await prisma.courseAnnouncement.update({
+    where: { id: existing.id },
+    data: parsed.data,
+  }));
+});
+
+coursesRouter.delete("/:courseId/announcements/:announcementId", requireAuth, requireRole("TRAINER"), async (req: AuthedRequest, res) => {
+  if (!(await canTeachCourse(req.user!, req.params.courseId))) {
+    return res.status(403).json({ error: "You don't teach this course." });
+  }
+  const trainer = await prisma.trainer.findUnique({ where: { userId: req.user!.id }, select: { id: true } });
+  const existing = await prisma.courseAnnouncement.findFirst({
+    where: { id: req.params.announcementId, courseId: req.params.courseId, trainerId: trainer?.id },
+  });
+  if (!existing) return res.status(404).json({ error: "Course note not found." });
+  await prisma.courseAnnouncement.delete({ where: { id: existing.id } });
+  res.status(204).send();
 });
 
 // LMS036 — Course certificates

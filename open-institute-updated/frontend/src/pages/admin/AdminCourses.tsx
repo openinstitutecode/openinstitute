@@ -73,6 +73,9 @@ export default function AdminCourses() {
   const userName = useCurrentUserName();
   const [courses, setCourses] = useState<CourseRow[] | null>(null);
   const [options, setOptions] = useState<FormOptions | null>(null);
+  const [trainerAssignments, setTrainerAssignments] = useState<Record<string, string>>({});
+  const [savingTrainerFor, setSavingTrainerFor] = useState<string | null>(null);
+  const [canManageCourses, setCanManageCourses] = useState(false);
   const [draft, setDraft] = useState<DraftCourse>(emptyDraft);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -83,13 +86,40 @@ export default function AdminCourses() {
 
   function load() {
     apiFetch<CourseRow[]>("/courses")
-      .then(setCourses)
+      .then((rows) => {
+        setCourses(rows);
+        setTrainerAssignments(Object.fromEntries(rows.map((course) => [course.id, course.trainer?.id ?? ""])));
+      })
       .catch((err) => setError(err instanceof Error ? err.message : "Could not load courses."));
     apiFetch<FormOptions>("/courses/admin/form-options")
       .then(setOptions)
       .catch((err) => setError(err instanceof Error ? err.message : "Could not load form options."));
   }
+
+  async function assignTrainer(courseId: string) {
+    setSavingTrainerFor(courseId);
+    setError(null);
+    setNotice(null);
+    try {
+      const trainerId = trainerAssignments[courseId] || null;
+      await apiFetch(`/courses/${courseId}/trainer`, {
+        method: "PATCH",
+        body: JSON.stringify({ trainerId }),
+      });
+      setNotice(trainerId ? "Trainer assigned to course." : "Trainer removed from course.");
+      load();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not assign this trainer.");
+    } finally {
+      setSavingTrainerFor(null);
+    }
+  }
   useEffect(load, []);
+  useEffect(() => {
+    apiFetch<{ role: string }>("/me/whoami")
+      .then(({ role }) => setCanManageCourses(["SUPER_ADMIN", "ICT_ADMIN", "PROGRAMME_COORDINATOR", "DEPARTMENT_HEAD"].includes(role)))
+      .catch(() => setCanManageCourses(false));
+  }, []);
 
   function startEdit(c: CourseRow) {
     setEditingId(c.id);
@@ -202,10 +232,9 @@ export default function AdminCourses() {
     <PortalShell role="Admin portal" links={links} userName={userName}>
       <h1 className="font-display text-2xl">Courses &amp; Moodle</h1>
       <p className="mt-2 max-w-prose text-sm text-ink/60">
-        Create courses and choose how each is delivered. CUSTOM courses use this
-        app's own module/lesson pages. MOODLE courses are created (and kept in
-        sync) in Moodle automatically, and enrolled students get a one-click
-        launch button on their course page.
+        Assign trainers to courses here. Authorized course administrators can also create courses and choose
+        how each is delivered. CUSTOM courses use this app's own module/lesson pages; MOODLE courses are
+        created and kept in sync with Moodle.
       </p>
 
       {options && !options.moodleConfigured && (
@@ -219,7 +248,7 @@ export default function AdminCourses() {
       {notice && <p className="mt-4 text-sm text-forest">{notice}</p>}
 
       <div className="mt-8 grid gap-8 lg:grid-cols-[380px_1fr]">
-        <PortalSection title={editingId ? "Edit course" : "New course"}>
+        {canManageCourses ? <PortalSection title={editingId ? "Edit course" : "New course"}>
           <div className="space-y-3 text-sm">
             <label className="block">
               <span className="mb-1 block text-xs text-ink/50">Unit</span>
@@ -258,7 +287,7 @@ export default function AdminCourses() {
             </label>
 
             <label className="block">
-              <span className="mb-1 block text-xs text-ink/50">Trainer (optional)</span>
+              <span className="mb-1 block text-xs text-ink/50">Assign trainer (optional)</span>
               <select
                 value={draft.trainerId}
                 onChange={(e) => setDraft({ ...draft, trainerId: e.target.value })}
@@ -313,7 +342,12 @@ export default function AdminCourses() {
               )}
             </div>
           </div>
-        </PortalSection>
+        </PortalSection> : (
+          <div className="border border-line bg-white p-5 text-sm text-ink/60">
+            As Registrar, you can assign or unassign trainers below. Course creation and course settings are restricted
+            to course administrators.
+          </div>
+        )}
 
         <PortalSection title="All courses">
           {!courses && !error && <LoadingState />}
@@ -326,10 +360,7 @@ export default function AdminCourses() {
                 <div className="flex items-start justify-between gap-4">
                   <div>
                     <p className="font-medium">{c.title}</p>
-                    <p className="text-xs text-ink/50">
-                      {c.unit.code} · {c.unit.programme.name}
-                      {c.trainer && ` · ${c.trainer.fullName}`}
-                    </p>
+                    <p className="text-xs text-ink/50">{c.unit.code} · {c.unit.programme.name}</p>
                   </div>
                   <div className="flex shrink-0 flex-col items-end gap-1.5">
                     <div className="flex items-center gap-1.5">
@@ -342,7 +373,7 @@ export default function AdminCourses() {
                       <Badge tone={c.publishedAt ? "ok" : "neutral"}>{c.publishedAt ? "published" : "draft"}</Badge>
                     </div>
                     <div className="flex gap-3">
-                      {c.lmsEngine === "MOODLE" && !c.moodleCourseId && (
+                      {canManageCourses && c.lmsEngine === "MOODLE" && !c.moodleCourseId && (
                         <button
                           onClick={() => retrySync(c.id)}
                           disabled={busy}
@@ -351,21 +382,45 @@ export default function AdminCourses() {
                           Retry Moodle sync
                         </button>
                       )}
-                      {!c.publishedAt && (
+                      {canManageCourses && !c.publishedAt && (
                         <button onClick={() => requestApproval(c.id)} className="text-xs font-medium text-navy hover:underline">
                           Request QA approval
                         </button>
                       )}
-                      <button onClick={() => startEdit(c)} className="text-xs font-medium text-navy hover:underline">
+                      {canManageCourses && <button onClick={() => startEdit(c)} className="text-xs font-medium text-navy hover:underline">
                         Edit
-                      </button>
-                      <button onClick={() => setCatalogueCourseId(catalogueCourseId === c.id ? null : c.id)} className="text-xs font-medium text-navy hover:underline">
+                      </button>}
+                      {canManageCourses && <button onClick={() => setCatalogueCourseId(catalogueCourseId === c.id ? null : c.id)} className="text-xs font-medium text-navy hover:underline">
                         {catalogueCourseId === c.id ? "Close catalogue" : "Catalogue"}
-                      </button>
+                      </button>}
                     </div>
                   </div>
                 </div>
-                {catalogueCourseId === c.id && <CatalogueEditor courseId={c.id} allCourses={courses ?? []} />}
+                <div className="mt-3 flex max-w-xl items-end gap-2">
+                  <label className="min-w-0 flex-1 text-xs text-ink/60">
+                    Assign trainer
+                    <select
+                      aria-label={`Assign trainer to ${c.title}`}
+                      value={trainerAssignments[c.id] ?? ""}
+                      onChange={(event) => setTrainerAssignments((current) => ({ ...current, [c.id]: event.target.value }))}
+                      className="input mt-1 w-full"
+                    >
+                      <option value="">Unassigned</option>
+                      {options?.trainers.map((trainer) => (
+                        <option key={trainer.id} value={trainer.id}>{trainer.fullName}</option>
+                      ))}
+                    </select>
+                  </label>
+                  <button
+                    type="button"
+                    disabled={savingTrainerFor === c.id || trainerAssignments[c.id] === (c.trainer?.id ?? "")}
+                    onClick={() => void assignTrainer(c.id)}
+                    className="btn-secondary whitespace-nowrap disabled:opacity-50"
+                  >
+                    {savingTrainerFor === c.id ? "Saving…" : "Save trainer"}
+                  </button>
+                </div>
+                {canManageCourses && catalogueCourseId === c.id && <CatalogueEditor courseId={c.id} allCourses={courses ?? []} />}
               </li>
             ))}
           </ul>

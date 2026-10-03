@@ -67,6 +67,7 @@ const fmtSize = (n: number) => (n >= 1048576 ? `${(n / 1048576).toFixed(1)} MB` 
 export default function TrainerLessonBuilder() {
   const [confirm, confirmDialog] = useConfirm();
   const userName = useCurrentUserName();
+  const initialCourseId = new URLSearchParams(window.location.search).get("courseId") ?? undefined;
   const [courseId, setCourseId] = useState("");
   const [outline, setOutline] = useState<Outline | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -293,7 +294,7 @@ export default function TrainerLessonBuilder() {
         text, images, video, audio and documents. New lessons stay drafts until you publish them.
       </p>
 
-      <div className="mt-4 max-w-md"><CoursePicker value={courseId} onChange={setCourseId} /></div>
+      <div className="mt-4 max-w-md"><CoursePicker value={courseId} initialCourseId={initialCourseId} onChange={setCourseId} /></div>
       {courseId && <CompletionRulePanel courseId={courseId} />}
       {courseId && <CertificateIssuePanel courseId={courseId} />}
       {error && <p className="mt-4 text-sm text-navy-dark">{error}</p>}

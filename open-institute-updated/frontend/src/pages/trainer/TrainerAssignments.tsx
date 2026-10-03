@@ -22,6 +22,7 @@ type Form = typeof blank;
 
 export default function TrainerAssignments() {
   const userName = useCurrentUserName();
+  const initialCourseId = new URLSearchParams(window.location.search).get("courseId") ?? undefined;
   const [courseId, setCourseId] = useState("");
   const [list, setList] = useState<A[] | null>(null);
   const [showArchived, setShowArchived] = useState(false);
@@ -71,7 +72,7 @@ export default function TrainerAssignments() {
       <div className="space-y-6">
         <PortalSection title="Assignments" action={<div className="flex items-center gap-3"><label className="text-xs"><input type="checkbox" checked={showArchived} onChange={(e) => setShowArchived(e.target.checked)} /> Show archived</label>
           <button className="btn-primary !py-2" disabled={!courseId} onClick={() => edit(null)}>New assignment</button></div>}>
-          <CoursePicker value={courseId} onChange={(id) => { setCourseId(id); setMarking(null); setEditing(null); }} className="mb-4 max-w-md" />
+          <CoursePicker value={courseId} initialCourseId={initialCourseId} onChange={(id) => { setCourseId(id); setMarking(null); setEditing(null); }} className="mb-4 max-w-md" />
           {msg && <p role="status" className={`mb-3 text-sm ${msg.ok ? "text-green-800" : "text-red-700"}`}>{msg.text}</p>}
           {list && (list.length === 0 ? <p className="text-sm text-ink/60">No assignments yet.</p> : (
             <Table columns={["Title", "Due", "Status", "Marks", "Hand-ins", "Actions"]} rows={list.map((a) => [

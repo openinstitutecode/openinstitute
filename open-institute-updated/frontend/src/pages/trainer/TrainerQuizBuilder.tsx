@@ -60,6 +60,7 @@ const toSettings = (q: Quiz): Settings => ({
 export default function TrainerQuizBuilder() {
   const [confirm, confirmDialog] = useConfirm();
   const userName = useCurrentUserName();
+  const initialCourseId = new URLSearchParams(window.location.search).get("courseId") ?? undefined;
   const [courseId, setCourseId] = useState("");
   const [quizzes, setQuizzes] = useState<QuizSummary[] | null>(null);
   const [quiz, setQuiz] = useState<Quiz | null>(null);
@@ -249,7 +250,7 @@ export default function TrainerQuizBuilder() {
         students see the answers afterwards. Quizzes start as drafts; students only see them once you publish.
       </p>
 
-      <div className="mt-4 max-w-md"><CoursePicker value={courseId} onChange={setCourseId} /></div>
+      <div className="mt-4 max-w-md"><CoursePicker value={courseId} initialCourseId={initialCourseId} onChange={setCourseId} /></div>
       {error && <p className="mt-4 text-sm text-navy-dark">{error}</p>}
       {msg && <p className="mt-4 text-sm text-forest">{msg}</p>}
 

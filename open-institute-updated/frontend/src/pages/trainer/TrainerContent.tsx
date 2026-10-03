@@ -10,37 +10,8 @@ export default function TrainerContent() {
   const userName = useCurrentUserName();
   const [courseId, setCourseId] = useState("");
   const [programmeId, setProgrammeId] = useState("");
-
-  const [assignTitle, setAssignTitle] = useState("");
-  const [instructions, setInstructions] = useState("");
-  const [dueAt, setDueAt] = useState("");
-  const [totalMarks, setTotalMarks] = useState(100);
-  const [assignSaved, setAssignSaved] = useState(false);
-
-  const [error, setError] = useState<string | null>(null);
-
-  async function createAssignment(e: FormEvent) {
-    e.preventDefault();
-    setError(null);
-    setAssignSaved(false);
-    try {
-      await apiFetch("/content/assignments", {
-        method: "POST",
-        body: JSON.stringify({
-          courseId,
-          title: assignTitle,
-          instructions,
-          dueAt: new Date(dueAt).toISOString(),
-          totalMarks,
-        }),
-      });
-      setAssignTitle("");
-      setInstructions("");
-      setAssignSaved(true);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not save assignment.");
-    }
-  }
+  const initialCourseId = new URLSearchParams(window.location.search).get("courseId") ?? undefined;
+  const scoped = (path: string) => `${path}?courseId=${encodeURIComponent(courseId)}`;
 
   return (
     <PortalShell role="Trainer portal" links={links} userName={userName}>
@@ -49,39 +20,37 @@ export default function TrainerContent() {
       <div className="mt-4 max-w-md">
         <CoursePicker
           value={courseId}
+          initialCourseId={initialCourseId}
           onChange={(id, course) => {
             setCourseId(id);
             setProgrammeId(course?.unit.programmeId ?? "");
-            setAssignSaved(false);
           }}
         />
       </div>
 
-      {error && <p className="mt-4 text-sm text-navy-dark">{error}</p>}
-
       <div className="mt-8 grid gap-6 lg:grid-cols-2">
-        <PortalSection title="Lessons, media &amp; quizzes">
+        <PortalSection title="Build and publish course content">
           <p className="text-sm text-ink/60">
-            Build modules and lessons (text, images, video, audio, documents), reorder them by dragging, and manage
-            quizzes in the dedicated builders. Live classes are scheduled from Live Teaching.
+            Create and update modules, notes and lessons, upload media, then publish or remove content. Published
+            content is shown to enrolled students; edits to live lessons may require QA review.
           </p>
           <div className="mt-4 flex flex-wrap gap-3">
-            <Link to="/trainer/lesson-builder" className="btn-primary">Lesson Builder</Link>
-            <Link to="/trainer/quiz-builder" className="btn-secondary">Quiz Builder</Link>
-            <Link to="/trainer/live" className="btn-secondary">Live Teaching</Link>
+            <Link to={scoped("/trainer/lesson-builder")} className="btn-primary">Create / manage course notes &amp; lessons</Link>
+            <Link to={scoped("/trainer/quiz-builder")} className="btn-secondary">Create / publish quizzes &amp; exams</Link>
           </div>
         </PortalSection>
 
-        <PortalSection title="New assignment">
-          <form onSubmit={createAssignment} className="space-y-3">
-            <input required value={assignTitle} onChange={(e) => setAssignTitle(e.target.value)} placeholder="Assignment title" className="input" />
-            <textarea required rows={3} value={instructions} onChange={(e) => setInstructions(e.target.value)} placeholder="Instructions" className="input" />
-            <input required type="datetime-local" value={dueAt} onChange={(e) => setDueAt(e.target.value)} className="input" />
-            <input required type="number" min={1} value={totalMarks} onChange={(e) => setTotalMarks(Number(e.target.value))} placeholder="Total marks" className="input" />
-            <button type="submit" disabled={!courseId} className="btn-secondary w-full justify-center">Save assignment</button>
-            {!courseId && <p className="text-xs text-ink/45">Choose a course first.</p>}
-            {assignSaved && <p className="text-xs text-forest">Saved.</p>}
-          </form>
+        <PortalSection title="Assignments &amp; teaching">
+          <p className="text-sm text-ink/60">
+            The assignment builder supports draft, edit, publish, unpublish, archive and restore. Use it instead of
+            saving an assignment without a way to publish it.
+          </p>
+          <div className="mt-4 flex flex-wrap gap-3">
+            <Link to={scoped("/trainer/assignments")} className="btn-primary">Create / publish assignments</Link>
+            <Link to="/trainer/courses" className="btn-secondary">Course notes &amp; student updates</Link>
+            <Link to="/trainer/live" className="btn-secondary">Live Teaching</Link>
+          </div>
+          {!courseId && <p className="mt-3 text-xs text-ink/45">Choose a course above to open a course-specific builder.</p>}
         </PortalSection>
       </div>
 
