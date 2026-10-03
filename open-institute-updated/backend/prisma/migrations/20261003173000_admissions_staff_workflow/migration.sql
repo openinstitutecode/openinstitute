@@ -1,42 +1,52 @@
 ALTER TABLE "User"
-  ADD COLUMN "mustChangePassword" BOOLEAN NOT NULL DEFAULT false;
+  ADD COLUMN IF NOT EXISTS "mustChangePassword" BOOLEAN NOT NULL DEFAULT false;
 
 ALTER TABLE "Application"
-  ADD COLUMN "temporaryPasswordHash" TEXT,
-  ADD COLUMN "portraitPhotoUrl" TEXT;
+  ADD COLUMN IF NOT EXISTS "temporaryPasswordHash" TEXT,
+  ADD COLUMN IF NOT EXISTS "portraitPhotoUrl" TEXT;
 
 ALTER TABLE "Student"
-  ADD COLUMN "cardId" TEXT,
-  ADD COLUMN "applicationId" TEXT;
+  ADD COLUMN IF NOT EXISTS "cardId" TEXT,
+  ADD COLUMN IF NOT EXISTS "applicationId" TEXT;
 
 UPDATE "Student"
 SET "cardId" = 'DID-' || upper(substr(md5("id"), 1, 12))
 WHERE "cardId" IS NULL;
 
-CREATE UNIQUE INDEX "Student_cardId_key" ON "Student"("cardId");
-CREATE UNIQUE INDEX "Student_applicationId_key" ON "Student"("applicationId");
+CREATE UNIQUE INDEX IF NOT EXISTS "Student_cardId_key" ON "Student"("cardId");
+CREATE UNIQUE INDEX IF NOT EXISTS "Student_applicationId_key" ON "Student"("applicationId");
 ALTER TABLE "Student" ALTER COLUMN "cardId" SET NOT NULL;
-ALTER TABLE "Student"
-  ADD CONSTRAINT "Student_applicationId_fkey"
-  FOREIGN KEY ("applicationId") REFERENCES "Application"("id")
-  ON DELETE SET NULL ON UPDATE CASCADE;
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1
+    FROM pg_constraint
+    WHERE conname = 'Student_applicationId_fkey'
+      AND conrelid = '"Student"'::regclass
+  ) THEN
+    ALTER TABLE "Student"
+      ADD CONSTRAINT "Student_applicationId_fkey"
+      FOREIGN KEY ("applicationId") REFERENCES "Application"("id")
+      ON DELETE SET NULL ON UPDATE CASCADE;
+  END IF;
+END $$;
 
 ALTER TABLE "StaffProfile"
-  ADD COLUMN "staffNumber" TEXT,
-  ADD COLUMN "photoUrl" TEXT;
-CREATE UNIQUE INDEX "StaffProfile_staffNumber_key" ON "StaffProfile"("staffNumber");
+  ADD COLUMN IF NOT EXISTS "staffNumber" TEXT,
+  ADD COLUMN IF NOT EXISTS "photoUrl" TEXT;
+CREATE UNIQUE INDEX IF NOT EXISTS "StaffProfile_staffNumber_key" ON "StaffProfile"("staffNumber");
 
 ALTER TABLE "Trainer"
-  ADD COLUMN "staffNumber" TEXT,
-  ADD COLUMN "photoUrl" TEXT;
-CREATE UNIQUE INDEX "Trainer_staffNumber_key" ON "Trainer"("staffNumber");
+  ADD COLUMN IF NOT EXISTS "staffNumber" TEXT,
+  ADD COLUMN IF NOT EXISTS "photoUrl" TEXT;
+CREATE UNIQUE INDEX IF NOT EXISTS "Trainer_staffNumber_key" ON "Trainer"("staffNumber");
 
 ALTER TABLE "Document"
-  ADD COLUMN "storageKey" TEXT,
-  ADD COLUMN "mimeType" TEXT,
-  ADD COLUMN "originalName" TEXT;
+  ADD COLUMN IF NOT EXISTS "storageKey" TEXT,
+  ADD COLUMN IF NOT EXISTS "mimeType" TEXT,
+  ADD COLUMN IF NOT EXISTS "originalName" TEXT;
 
-CREATE TABLE "IdSequence" (
+CREATE TABLE IF NOT EXISTS "IdSequence" (
   "name" TEXT NOT NULL,
   "value" INTEGER NOT NULL DEFAULT 0,
   "updatedAt" TIMESTAMP(3) NOT NULL,
@@ -44,11 +54,12 @@ CREATE TABLE "IdSequence" (
 );
 
 WITH profiles AS (
-  SELECT "id", "createdAt", 'staff' AS "profileType" FROM "StaffProfile"
+  SELECT "id", 'staff' AS "profileType" FROM "StaffProfile"
   UNION ALL
-  SELECT "id", "createdAt", 'trainer' AS "profileType" FROM "Trainer"
+  SELECT "id", 'trainer' AS "profileType" FROM "Trainer"
 ), numbered AS (
-  SELECT "id", "profileType", row_number() OVER (ORDER BY "createdAt", "id") AS "sequence"
+  SELECT profiles."id", profiles."profileType",
+         row_number() OVER (ORDER BY profiles."profileType", profiles."id") AS "sequence"
   FROM profiles
 )
 UPDATE "StaffProfile" AS profile
@@ -58,11 +69,12 @@ WHERE numbered."profileType" = 'staff'
   AND numbered."id" = profile."id";
 
 WITH profiles AS (
-  SELECT "id", "createdAt", 'staff' AS "profileType" FROM "StaffProfile"
+  SELECT "id", 'staff' AS "profileType" FROM "StaffProfile"
   UNION ALL
-  SELECT "id", "createdAt", 'trainer' AS "profileType" FROM "Trainer"
+  SELECT "id", 'trainer' AS "profileType" FROM "Trainer"
 ), numbered AS (
-  SELECT "id", "profileType", row_number() OVER (ORDER BY "createdAt", "id") AS "sequence"
+  SELECT profiles."id", profiles."profileType",
+         row_number() OVER (ORDER BY profiles."profileType", profiles."id") AS "sequence"
   FROM profiles
 )
 UPDATE "Trainer" AS profile
