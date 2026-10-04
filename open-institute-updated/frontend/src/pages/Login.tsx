@@ -31,8 +31,15 @@ export default function Login() {
         body: JSON.stringify({ email, password, portal: role }),
       });
       if (!res.ok) {
-        const body = await res.json().catch(() => ({}));
-        throw new Error(body.message ?? "Invalid credentials.");
+        const body = await res.json().catch(() => null) as { message?: string } | null;
+        if (body?.message) throw new Error(body.message);
+        if ([502, 503, 504].includes(res.status)) {
+          throw new Error("The sign-in service is temporarily unavailable. Please try again later or contact support.");
+        }
+        if (res.status === 401) {
+          throw new Error("The email, student number, or password is incorrect.");
+        }
+        throw new Error(`Sign-in could not be completed (HTTP ${res.status}). Please try again or contact support.`);
       }
       const data = await res.json();
       localStorage.setItem("kvbdtc_token", data.token);
