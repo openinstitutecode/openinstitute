@@ -77,6 +77,9 @@ export default function Login() {
             </button>
           ))}
         </div>
+        <p className="mt-2 text-xs text-ink/50">
+          Your account role determines your workspace after sign-in.
+        </p>
 
         <form onSubmit={handleSubmit} className="mt-8 space-y-5">
           <label className="block">

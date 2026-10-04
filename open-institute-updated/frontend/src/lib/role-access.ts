@@ -149,6 +149,7 @@ export function portalHomeForRole(role: string | null): string {
 
 export function canAccessPath(role: string | null, path: string): boolean {
   if (!role) return false;
+  if (role === "SUPER_ADMIN") return true;
 
   if (path === "/notifications") return rolePortal(role) !== null;
   if (path.startsWith("/transcript/")) return role === "STUDENT";
