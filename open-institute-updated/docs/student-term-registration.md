@@ -2,7 +2,7 @@
 
 ## Configure a term
 
-In **Admin portal → Semester Management**, create a term for each programme:
+In **Admin portal → Term Setup & Management** (available from the Admin/Registrar dashboard), create a term for each programme. Creating it with **Create and set current term** activates it immediately for student registration:
 
 - Set start and end dates to exactly 56 calendar days, counting both dates.
 - Set the registration window and assessment dates.

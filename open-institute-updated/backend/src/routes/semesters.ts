@@ -6,6 +6,7 @@ import { prisma } from "../lib/prisma.js";
 import { isEightWeekTerm } from "../lib/term-registration.js";
 
 const router = Router();
+const TERM_MANAGER_ROLES = ["REGISTRAR", "SUPER_ADMIN", "ICT_ADMIN", "PRINCIPAL"];
 
 const termSettingsSchema = z.object({
   maxCreditsPerTerm: z.coerce.number().int().min(24).max(36).default(24),
@@ -25,6 +26,7 @@ const createTermSchema = z.object({
   resultsDueDate: z.coerce.date(),
   maxCreditsPerTerm: termSettingsSchema.shape.maxCreditsPerTerm,
   creditRate: termSettingsSchema.shape.creditRate,
+  setCurrent: z.boolean().default(true),
 });
 
 // GET /api/semesters — list all semesters (admin/registrar filtered)
@@ -73,26 +75,26 @@ router.get("/:id", requireAuth, async (req: Request, res: Response) => {
 router.post("/", requireAuth, async (req: Request, res: Response) => {
   const parsed = createTermSchema.safeParse(req.body);
   if (!parsed.success) {
-    return res.status(400).json({ error: "Provide valid term details, a maximum of 24-36 credits, and a rate of KES 300-500 per credit." });
+    return res.status(400).json({ message: "Provide valid term details, a maximum of 24-36 credits, and a rate of KES 300-500 per credit." });
   }
-  const { programmeId, semesterNumber, academicYear, startDate, endDate, registrationOpen, registrationClose, assessmentStart, assessmentEnd, resultsDueDate, maxCreditsPerTerm, creditRate } = parsed.data;
+  const { programmeId, semesterNumber, academicYear, startDate, endDate, registrationOpen, registrationClose, assessmentStart, assessmentEnd, resultsDueDate, maxCreditsPerTerm, creditRate, setCurrent } = parsed.data;
   if (!isEightWeekTerm(startDate, endDate)) {
-    return res.status(400).json({ error: "A continuous term must be exactly 8 weeks (56 calendar days, including the start and end dates)." });
+    return res.status(400).json({ message: "A continuous term must be exactly 8 weeks (56 calendar days, including the start and end dates)." });
   }
   if (registrationClose < registrationOpen || assessmentEnd < assessmentStart) {
-    return res.status(400).json({ error: "Registration and assessment end dates must be on or after their start dates." });
+    return res.status(400).json({ message: "Registration and assessment end dates must be on or after their start dates." });
   }
   
   // Verify user is registrar/admin
   const user = await prisma.user.findUnique({ where: { id: (req as any).user?.id || "" }, select: { role: true } });
-  if (user?.role !== "REGISTRAR" && user?.role !== "SUPER_ADMIN") {
-    return res.status(403).json({ error: "Only registrars can create semesters" });
+  if (!user || !TERM_MANAGER_ROLES.includes(user.role)) {
+    return res.status(403).json({ message: "Only a registrar or authorized administrator can create terms." });
   }
   
   try {
     // Check programme exists
     const programme = await prisma.programme.findUnique({ where: { id: programmeId } });
-    if (!programme) return res.status(404).json({ error: "Programme not found" });
+    if (!programme) return res.status(404).json({ message: "Programme not found" });
     
     // Check unique semester per programme+year
     const existing = await prisma.semesterConfig.findUnique({
@@ -104,10 +106,17 @@ router.post("/", requireAuth, async (req: Request, res: Response) => {
         }
       }
     });
-    if (existing) return res.status(400).json({ error: "Semester already exists for this programme+year" });
+    if (existing) return res.status(400).json({ message: "A term already exists for this programme and academic year." });
     
-    const semester = await prisma.semesterConfig.create({
-      data: {
+    const semester = await prisma.$transaction(async (tx) => {
+      if (setCurrent) {
+        await tx.semesterConfig.updateMany({
+          where: { programmeId, isActive: true },
+          data: { isActive: false },
+        });
+      }
+      return tx.semesterConfig.create({
+        data: {
         programmeId,
         semesterNumber,
         academicYear,
@@ -122,22 +131,24 @@ router.post("/", requireAuth, async (req: Request, res: Response) => {
         maxCreditsPerTerm,
         creditRate,
         adminFee: 1000,
+        isActive: setCurrent,
         createdBy: (req as any).user?.id || ""
-      },
-      include: { programme: true }
+        },
+        include: { programme: true }
+      });
     });
     
     res.status(201).json(semester);
   } catch (error) {
-    res.status(500).json({ error: "Failed to create semester" });
+    res.status(500).json({ message: "Failed to create term. Check the selected programme and term details." });
   }
 });
 
 // PATCH /api/semesters/:id — update semester (REGISTRAR)
 router.patch("/:id", requireAuth, async (req: Request, res: Response) => {
   const user = await prisma.user.findUnique({ where: { id: (req as any).user?.id || "" }, select: { role: true } });
-  if (user?.role !== "REGISTRAR" && user?.role !== "SUPER_ADMIN") {
-    return res.status(403).json({ error: "Only registrars can update semesters" });
+  if (!user || !TERM_MANAGER_ROLES.includes(user.role)) {
+    return res.status(403).json({ error: "Only a registrar or authorized administrator can update terms." });
   }
   
   const parsed = z.object({
@@ -182,10 +193,18 @@ router.patch("/:id", requireAuth, async (req: Request, res: Response) => {
     if (registrationClose < registrationOpen || assessmentEnd < assessmentStart) {
       return res.status(400).json({ error: "Registration and assessment end dates must be on or after their start dates." });
     }
-    const semester = await prisma.semesterConfig.update({
-      where: { id: req.params.id },
-      data: parsed.data,
-      include: { programme: true }
+    const semester = await prisma.$transaction(async (tx) => {
+      if (parsed.data.isActive === true) {
+        await tx.semesterConfig.updateMany({
+          where: { programmeId: existing.programmeId, id: { not: existing.id }, isActive: true },
+          data: { isActive: false },
+        });
+      }
+      return tx.semesterConfig.update({
+        where: { id: req.params.id },
+        data: parsed.data,
+        include: { programme: true }
+      });
     });
     
     res.json(semester);
@@ -197,8 +216,8 @@ router.patch("/:id", requireAuth, async (req: Request, res: Response) => {
 // POST /api/semesters/:id/activate — set this semester as active (only one per programme can be active)
 router.post("/:id/activate", requireAuth, async (req: Request, res: Response) => {
   const user = await prisma.user.findUnique({ where: { id: (req as any).user?.id || "" }, select: { role: true } });
-  if (user?.role !== "REGISTRAR" && user?.role !== "SUPER_ADMIN") {
-    return res.status(403).json({ error: "Only registrars can activate semesters" });
+  if (!user || !TERM_MANAGER_ROLES.includes(user.role)) {
+    return res.status(403).json({ error: "Only a registrar or authorized administrator can activate terms." });
   }
   
   try {
@@ -208,17 +227,16 @@ router.post("/:id/activate", requireAuth, async (req: Request, res: Response) =>
     });
     if (!semester) return res.status(404).json({ error: "Semester not found" });
     
-    // Deactivate all others for this programme
-    await prisma.semesterConfig.updateMany({
-      where: { programmeId: semester.programmeId, id: { not: req.params.id } },
-      data: { isActive: false }
-    });
-    
-    // Activate this one
-    const updated = await prisma.semesterConfig.update({
-      where: { id: req.params.id },
-      data: { isActive: true },
-      include: { programme: true }
+    const updated = await prisma.$transaction(async (tx) => {
+      await tx.semesterConfig.updateMany({
+        where: { programmeId: semester.programmeId, id: { not: req.params.id } },
+        data: { isActive: false }
+      });
+      return tx.semesterConfig.update({
+        where: { id: req.params.id },
+        data: { isActive: true },
+        include: { programme: true }
+      });
     });
     
     res.json(updated);

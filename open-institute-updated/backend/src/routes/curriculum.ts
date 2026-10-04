@@ -8,7 +8,7 @@ export const curriculumRouter = Router();
 curriculumRouter.get(
   "/programmes",
   requireAuth,
-  requireRole("PROGRAMME_COORDINATOR", "DEPARTMENT_HEAD", "REGISTRAR", "QA_OFFICER", "SUPER_ADMIN"),
+  requireRole("PROGRAMME_COORDINATOR", "DEPARTMENT_HEAD", "REGISTRAR", "QA_OFFICER", "SUPER_ADMIN", "ICT_ADMIN", "PRINCIPAL"),
   async (_req: AuthedRequest, res) => {
     const programmes = await prisma.programme.findMany({
       include: { units: true, awardingBody: { select: { name: true } } },

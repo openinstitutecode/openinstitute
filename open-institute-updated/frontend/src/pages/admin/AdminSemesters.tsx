@@ -58,7 +58,7 @@ const links = [
   { to: "/admin/data-import", label: "Data Import" },
   { to: "/admin/integrations", label: "Integration Centre" },
   { to: "/admin/role-permissions", label: "Role Permissions" },
-  { to: "/admin/semesters", label: "Semester Management" },
+  { to: "/admin/semesters", label: "Term Setup & Management" },
   { to: "/admin/programme-accreditation", label: "Programme Accreditation" },
   { to: "/admin/credit-transfer", label: "Credit Transfer" },
   { to: "/admin/exam-security", label: "Exam Security" },
@@ -69,6 +69,8 @@ const links = [
   { to: "/admin/institutional-analytics", label: "Institutional Analytics" },
   { to: "/admin/decision-centre", label: "Executive Decision Centre" },
 ];
+
+type ProgrammeOption = { id: string; name: string };
 
 type Semester = {
   id: string;
@@ -107,6 +109,7 @@ const blankForm = {
 export default function AdminSemesters() {
   const userName = useCurrentUserName();
   const [semesters, setSemesters] = useState<Semester[] | null>(null);
+  const [programmes, setProgrammes] = useState<ProgrammeOption[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [form, setForm] = useState(blankForm);
   const [busy, setBusy] = useState(false);
@@ -117,6 +120,14 @@ export default function AdminSemesters() {
       .catch((err) => setError(err instanceof Error ? err.message : "Could not load semesters."));
   }
   useEffect(load, []);
+  useEffect(() => {
+    apiFetch<ProgrammeOption[]>("/curriculum/programmes")
+      .then((items) => {
+        setProgrammes(items);
+        setForm((current) => current.programmeId || !items.length ? current : { ...current, programmeId: items[0].id });
+      })
+      .catch((err) => setError(err instanceof Error ? err.message : "Could not load programmes for term setup."));
+  }, []);
 
   function setField(name: keyof typeof blankForm, value: string) {
     setForm((f) => ({ ...f, [name]: value }));
@@ -127,8 +138,8 @@ export default function AdminSemesters() {
     setError(null);
     setBusy(true);
     try {
-      await apiFetch("/semesters", { method: "POST", body: JSON.stringify(form) });
-      setForm(blankForm);
+      await apiFetch("/semesters", { method: "POST", body: JSON.stringify({ ...form, setCurrent: true }) });
+      setForm({ ...blankForm, programmeId: form.programmeId });
       load();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not create semester.");
@@ -159,20 +170,27 @@ export default function AdminSemesters() {
 
   return (
     <PortalShell role="Admin portal" links={links} userName={userName}>
-      <h1 className="font-display text-2xl">Semester management</h1>
+      <h1 className="font-display text-2xl">Term setup and management</h1>
       <p className="mt-2 max-w-prose text-sm text-ink/60">
-        Configure continuous 8-week terms, registration and assessment windows, workload limits, and per-credit pricing. Students must register for at least 8 credits and can be capped at 24-36 credits.
-        Each term adds a KES 1,000 administration fee; industrial fees are configured separately in Fee Structure. Mark which term
-        is currently active. Registrar / Super Admin only for changes;
+        Create and set the current continuous 8-week term for a programme. Setting a term current makes it available immediately for student course registration.
+        Students must register for at least 8 credits and can be capped at 24-36 credits.
+        Each term adds a KES 1,000 administration fee; industrial fees are configured separately in Fee Structure.
+        Registrar and authorized administrator access;
         deleting requires Super Admin.
       </p>
 
       {error && <p className="mt-4 text-sm text-navy-dark">{error}</p>}
 
       <div className="mt-8 grid gap-6 lg:grid-cols-2">
-        <PortalSection title="Create a semester">
+        <PortalSection title="Create and set the current term">
           <form onSubmit={createSemester} className="space-y-3">
-            <input value={form.programmeId} onChange={(e) => setField("programmeId", e.target.value)} placeholder="Programme ID" className="input" required />
+            <label className="block">
+              <span className="text-xs text-ink/60">Programme</span>
+              <select value={form.programmeId} onChange={(e) => setField("programmeId", e.target.value)} className="input mt-1" required disabled={!programmes?.length}>
+                <option value="">{programmes ? "Select a programme" : "Loading programmes…"}</option>
+                {programmes?.map((programme) => <option key={programme.id} value={programme.id}>{programme.name}</option>)}
+              </select>
+            </label>
             <div className="flex gap-3">
               <input type="number" min="1" value={form.semesterNumber} onChange={(e) => setField("semesterNumber", e.target.value)} aria-label="Term number" className="input w-28" required />
               <input value={form.academicYear} onChange={(e) => setField("academicYear", e.target.value)} placeholder="Academic year, e.g. 2026/2027" className="input" required />
@@ -206,12 +224,12 @@ export default function AdminSemesters() {
               </label>
             ))}
             <button type="submit" disabled={busy} className="btn-primary disabled:opacity-50">
-              {busy ? "Saving…" : "Create semester"}
+              {busy ? "Setting current term…" : "Create and set current term"}
             </button>
           </form>
         </PortalSection>
 
-        <PortalSection title="All semesters">
+        <PortalSection title="All terms">
           {semesters && semesters.length === 0 && <p className="text-sm text-ink/50">None configured yet.</p>}
           <ul className="divide-y divide-line">
             {semesters?.map((s) => (

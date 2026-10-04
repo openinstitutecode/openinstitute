@@ -63,7 +63,7 @@ const links = [
   { to: "/admin/data-import", label: "Data Import" },
   { to: "/admin/integrations", label: "Integration Centre" },
   { to: "/admin/role-permissions", label: "Role Permissions" },
-  { to: "/admin/semesters", label: "Semester Management" },
+  { to: "/admin/semesters", label: "Term Setup & Management" },
   { to: "/admin/programme-accreditation", label: "Programme Accreditation" },
   { to: "/admin/credit-transfer", label: "Credit Transfer" },
   { to: "/admin/exam-security", label: "Exam Security" },
@@ -76,16 +76,21 @@ const links = [
 ];
 
 type StudentRow = { programme: string; academicStatus: string };
+type ActiveTerm = { id: string; programme: { name: string }; semesterNumber: number; academicYear: string };
 
 export default function AdminDashboard() {
   const userName = useCurrentUserName();
   const [students, setStudents] = useState<StudentRow[] | null>(null);
+  const [activeTerms, setActiveTerms] = useState<ActiveTerm[] | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     apiFetch<StudentRow[]>("/students")
       .then(setStudents)
       .catch((err) => setError(err instanceof Error ? err.message : "Could not load enrollment data."));
+    apiFetch<ActiveTerm[]>("/semesters?isActive=true")
+      .then(setActiveTerms)
+      .catch((err) => setError(err instanceof Error ? err.message : "Could not load current term status."));
   }, []);
 
   const byProgramme = students?.reduce<Record<string, number>>((acc, s) => {
@@ -111,6 +116,24 @@ export default function AdminDashboard() {
           </p>
         </div>
         <Link to="/admin/courses" className="btn-primary">Manage courses &amp; trainers</Link>
+      </div>
+
+      <div className="mt-4 flex flex-wrap items-center justify-between gap-4 border border-gold/50 bg-gold/10 p-5">
+        <div>
+          <h2 className="font-display text-lg">Term setup and student registration</h2>
+          {activeTerms && activeTerms.length > 0 ? (
+            <p className="mt-1 text-sm text-ink/65">
+              Current terms: {activeTerms.map((term) => `${term.programme.name} — Term ${term.semesterNumber}, ${term.academicYear}`).join("; ")}
+            </p>
+          ) : (
+            <p className="mt-1 text-sm text-ink/65">
+              {activeTerms ? "No current term is set. Students cannot register until a term is created and activated." : "Checking current term status…"}
+            </p>
+          )}
+        </div>
+        <Link to="/admin/semesters" className="btn-primary">
+          {activeTerms?.length ? "Manage or set a term" : "Set current term"}
+        </Link>
       </div>
 
       <div className="mt-8">
