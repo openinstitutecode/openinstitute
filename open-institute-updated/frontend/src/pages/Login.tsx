@@ -83,7 +83,7 @@ export default function Login() {
 
         <form onSubmit={handleSubmit} className="mt-8 space-y-5">
           <label className="block">
-            <span className="text-sm font-medium text-ink/80">Email or student number</span>
+            <span className="text-sm font-medium text-ink/80">Email, student number, or admission number</span>
             <input
               required
               value={email}

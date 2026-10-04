@@ -10,6 +10,7 @@ import { validatePassword, bcryptRounds } from "../lib/password-policy.js";
 import { securityEvent } from "../lib/logger.js";
 import { dispatchNotification } from "../lib/notify.js";
 import { primaryOrigin } from "../lib/cors-origins.js";
+import { loginIdentityWhere } from "../lib/login-identity.js";
 
 export const authRouter = Router();
 
@@ -20,7 +21,7 @@ function sessionTtlSeconds(): number {
 }
 
 const loginSchema = z.object({
-  email: z.string().email(),
+  email: z.string().trim().min(1).max(254),
   password: z.string().min(1),
   portal: z.enum(["student", "trainer", "staff", "employer", "alumni", "applicant"]).optional(),
 });
@@ -30,11 +31,10 @@ authRouter.post("/login", async (req, res) => {
   if (!parsed.success) {
     return res.status(400).json({ message: "Enter a valid email and password." });
   }
-  const email = parsed.data.email.trim().toLowerCase();
+  const email = parsed.data.email.trim();
   const { password } = parsed.data;
 
-  const user = await prisma.user.findUnique({ where: { email } })
-    ?? await prisma.user.findUnique({ where: { email: parsed.data.email } });
+  const user = await prisma.user.findFirst({ where: loginIdentityWhere(email) });
 
   // KSEC-005 / KFX-009 — brute-force lockout, per account AND per IP, from the shared
   // FailedLoginAttempt table (holds across restarts and API instances). Attempts rejected *because*
