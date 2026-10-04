@@ -2,8 +2,9 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import PortalShell from "../../components/portal/PortalShell";
 import { PortalSection, Table, Badge } from "../../components/portal/Primitives";
-import { apiFetch, useCurrentUserName } from "../../lib/api";
+import { apiFetch, getRole, useCurrentUserName } from "../../lib/api";
 import { LoadingState } from "../../components/portal/StateViews";
+import { canAccessPath, portalHomeForRole } from "../../lib/role-access";
 
 const links = [
   { to: "/admin/dashboard", label: "Dashboard" },
@@ -80,18 +81,26 @@ type ActiveTerm = { id: string; programme: { name: string }; semesterNumber: num
 
 export default function AdminDashboard() {
   const userName = useCurrentUserName();
+  const role = getRole();
+  const canViewStudents = canAccessPath(role, "/admin/students");
+  const canManageCourses = canAccessPath(role, "/admin/courses");
+  const canManageTerms = canAccessPath(role, "/admin/semesters");
   const [students, setStudents] = useState<StudentRow[] | null>(null);
   const [activeTerms, setActiveTerms] = useState<ActiveTerm[] | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    apiFetch<StudentRow[]>("/students")
-      .then(setStudents)
-      .catch((err) => setError(err instanceof Error ? err.message : "Could not load enrollment data."));
-    apiFetch<ActiveTerm[]>("/semesters?isActive=true")
-      .then(setActiveTerms)
-      .catch((err) => setError(err instanceof Error ? err.message : "Could not load current term status."));
-  }, []);
+    if (canViewStudents) {
+      apiFetch<StudentRow[]>("/students")
+        .then(setStudents)
+        .catch((err) => setError(err instanceof Error ? err.message : "Could not load enrollment data."));
+    }
+    if (canManageTerms) {
+      apiFetch<ActiveTerm[]>("/semesters?isActive=true")
+        .then(setActiveTerms)
+        .catch((err) => setError(err instanceof Error ? err.message : "Could not load current term status."));
+    }
+  }, [canManageTerms, canViewStudents]);
 
   const byProgramme = students?.reduce<Record<string, number>>((acc, s) => {
     acc[s.programme] = (acc[s.programme] ?? 0) + 1;
@@ -102,13 +111,12 @@ export default function AdminDashboard() {
     <PortalShell role="Admin portal" links={links} userName={userName}>
       <h1 className="font-display text-2xl">Institutional overview</h1>
       <p className="mt-1 text-sm text-ink/60">
-        For live alerts and today's numbers, see Command Centre — this page
-        breaks enrollment down by programme.
+        This workspace shows only the tools and information available to your role.
       </p>
 
       {error && <p className="mt-6 text-sm text-navy-dark">{error}</p>}
 
-      <div className="mt-6 flex flex-wrap items-center justify-between gap-4 border border-line bg-white p-5">
+      {canManageCourses && <div className="mt-6 flex flex-wrap items-center justify-between gap-4 border border-line bg-white p-5">
         <div>
           <h2 className="font-display text-lg">Course management</h2>
           <p className="mt-1 text-sm text-ink/60">
@@ -116,9 +124,9 @@ export default function AdminDashboard() {
           </p>
         </div>
         <Link to="/admin/courses" className="btn-primary">Manage courses &amp; trainers</Link>
-      </div>
+      </div>}
 
-      <div className="mt-4 flex flex-wrap items-center justify-between gap-4 border border-gold/50 bg-gold/10 p-5">
+      {canManageTerms && <div className="mt-4 flex flex-wrap items-center justify-between gap-4 border border-gold/50 bg-gold/10 p-5">
         <div>
           <h2 className="font-display text-lg">Term setup and student registration</h2>
           {activeTerms && activeTerms.length > 0 ? (
@@ -134,9 +142,9 @@ export default function AdminDashboard() {
         <Link to="/admin/semesters" className="btn-primary">
           {activeTerms?.length ? "Manage or set a term" : "Set current term"}
         </Link>
-      </div>
+      </div>}
 
-      <div className="mt-8">
+      {canViewStudents && <div className="mt-8">
         <PortalSection title="Enrollment by programme">
           {!students && !error && <LoadingState />}
           {byProgramme && Object.keys(byProgramme).length === 0 && (
@@ -149,7 +157,15 @@ export default function AdminDashboard() {
             />
           )}
         </PortalSection>
-      </div>
+      </div>}
+
+      {role && portalHomeForRole(role) !== "/admin/dashboard" && (
+        <div className="mt-6 border border-line bg-white p-5">
+          <h2 className="font-display text-lg">Your role workspace</h2>
+          <p className="mt-1 text-sm text-ink/60">Open your main workspace to continue your role-specific tasks.</p>
+          <Link to={portalHomeForRole(role)} className="btn-primary mt-4">Open my workspace</Link>
+        </div>
+      )}
     </PortalShell>
   );
 }

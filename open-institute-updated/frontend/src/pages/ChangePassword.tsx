@@ -1,4 +1,5 @@
 import { FormEvent, useState } from "react";
+import { portalHomeForRole } from "../lib/role-access";
 
 export default function ChangePassword() {
   const [currentPassword, setCurrentPassword] = useState("");
@@ -20,7 +21,7 @@ export default function ChangePassword() {
       const data = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(data.message ?? "Could not change password.");
       localStorage.setItem("kvbdtc_token", data.token);
-      window.location.href = data.role === "STUDENT" ? "/student/dashboard" : data.role === "TRAINER" ? "/trainer/dashboard" : "/admin/dashboard";
+      window.location.href = portalHomeForRole(data.role);
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Could not change password.");
     } finally {

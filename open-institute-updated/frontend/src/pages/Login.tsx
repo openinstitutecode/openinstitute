@@ -1,11 +1,14 @@
 import { FormEvent, useState } from "react";
 import { Logo } from "../components/Logo";
+import { portalHomeForRole } from "../lib/role-access";
 
 const roles = [
   { id: "student", label: "Student" },
   { id: "trainer", label: "Trainer" },
   { id: "staff", label: "Staff / Admin" },
   { id: "employer", label: "Employer" },
+  { id: "alumni", label: "Alumni" },
+  { id: "applicant", label: "Applicant" },
 ] as const;
 
 type RoleId = (typeof roles)[number]["id"];
@@ -25,7 +28,7 @@ export default function Login() {
       const res = await fetch("/api/auth/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password, role }),
+        body: JSON.stringify({ email, password, portal: role }),
       });
       if (!res.ok) {
         const body = await res.json().catch(() => ({}));
@@ -37,8 +40,7 @@ export default function Login() {
         window.location.href = "/change-password";
         return;
       }
-      const portalPath = data.role === "STUDENT" ? "student" : data.role === "TRAINER" ? "trainer" : data.role === "EMPLOYER" ? "employer" : "admin";
-      window.location.href = `/${portalPath}/dashboard`;
+      window.location.href = portalHomeForRole(data.role);
     } catch (err) {
       // KFX-055 — the "Is the backend running?" hint was appended to EVERY error, including a plain
       // wrong-password or an account lockout. Only a network failure (fetch rejects with TypeError) gets it.
@@ -61,7 +63,7 @@ export default function Login() {
         <p className="eyebrow">Sign in</p>
         <h1 className="mt-3 font-display text-3xl font-medium">Welcome back</h1>
 
-        <div className="mt-6 grid grid-cols-2 gap-1 border border-line p-1 sm:grid-cols-4">
+        <div className="mt-6 grid grid-cols-2 gap-1 border border-line p-1 sm:grid-cols-3">
           {roles.map((r) => (
             <button
               key={r.id}

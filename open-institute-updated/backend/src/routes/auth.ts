@@ -22,7 +22,25 @@ function sessionTtlSeconds(): number {
 const loginSchema = z.object({
   email: z.string().email(),
   password: z.string().min(1),
+  portal: z.enum(["student", "trainer", "staff", "employer", "alumni", "applicant"]).optional(),
 });
+
+const STAFF_LOGIN_ROLES = new Set([
+  "SUPER_ADMIN", "BOARD_MEMBER", "PRINCIPAL", "DEPUTY_PRINCIPAL", "REGISTRAR",
+  "FINANCE_OFFICER", "ACCOUNTANT", "HR_OFFICER", "QA_OFFICER", "ICT_ADMIN",
+  "LIBRARIAN", "ADMISSIONS_OFFICER", "EXAMINATION_OFFICER", "DEPARTMENT_HEAD",
+  "PROGRAMME_COORDINATOR", "COUNSELLOR", "CAREER_OFFICER", "ATTACHMENT_OFFICER",
+  "EXTERNAL_EXAMINER", "AUDITOR", "REGULATORY_INSPECTOR",
+]);
+
+function roleMatchesLoginPortal(role: string, portal: string) {
+  if (portal === "student") return role === "STUDENT";
+  if (portal === "trainer") return role === "TRAINER";
+  if (portal === "employer") return role === "EMPLOYER";
+  if (portal === "alumni") return role === "ALUMNUS";
+  if (portal === "applicant") return role === "APPLICANT";
+  return STAFF_LOGIN_ROLES.has(role);
+}
 
 authRouter.post("/login", async (req, res) => {
   const parsed = loginSchema.safeParse(req.body);
@@ -83,6 +101,9 @@ authRouter.post("/login", async (req, res) => {
   if (!ok) {
     await prisma.failedLoginAttempt.create({ data: { email, ipAddress: req.ip, reason: "wrong_password" } });
     return res.status(401).json({ message: "Incorrect email or password." });
+  }
+  if (parsed.data.portal && !roleMatchesLoginPortal(user.role, parsed.data.portal)) {
+    return res.status(403).json({ message: "This account does not belong to the selected portal. Choose the correct portal to sign in." });
   }
 
   await prisma.user.update({

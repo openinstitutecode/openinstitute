@@ -5,6 +5,8 @@ import { usePublicSettings } from "../../lib/publicSettings";
 import NoticeBanner from "./NoticeBanner";
 import { GlobalSearch, NotificationBell, ThemeToggle } from "./HeaderTools";
 import { Logo, PrintLetterhead, COLLEGE_NAME } from "../Logo";
+import { canAccessPath } from "../../lib/role-access";
+import { getRole } from "../../lib/api";
 
 export type PortalLink = { to: string; label: string; icon?: ReactNode };
 
@@ -20,6 +22,8 @@ export default function PortalShell({
   userName: string;
 }) {
   const settings = usePublicSettings();
+  const userRole = getRole();
+  const visibleLinks = links.filter((link) => canAccessPath(userRole, link.to));
   const { branding } = settings;
   const flags = settings["feature.flags"]; // Batch 71 — admins can switch these off under System Settings → feature.flags (default on)
   return (
@@ -36,7 +40,7 @@ export default function PortalShell({
           <p className="mt-2 font-mono text-xs uppercase tracking-wide text-ink/50">{role}</p>
         </div>
         <nav aria-label="Portal navigation" className="flex flex-col gap-1 p-4">
-          {links.map((l) => (
+          {visibleLinks.map((l) => (
             <NavLink
               key={l.to}
               to={l.to}

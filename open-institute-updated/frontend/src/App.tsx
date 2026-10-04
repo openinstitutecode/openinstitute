@@ -5,6 +5,7 @@ import { LoadingState } from "./components/portal/StateViews";
 import Nav from "./components/Nav";
 import Footer from "./components/Footer";
 import RequireToken from "./components/RequireToken";
+import RequirePortalAccess from "./components/RequirePortalAccess";
 import Home from "./pages/Home";
 const About = lazy(() => import("./pages/About"));
 const Programmes = lazy(() => import("./pages/Programmes"));
@@ -207,6 +208,7 @@ export default function App() {
 
       {/* Authenticated portals */}
       <Route element={<RequireToken />}>
+      <Route element={<RequirePortalAccess />}>
         <Route path="/notifications" element={<NotificationCentre />} />
         <Route path="/student/dashboard" element={<StudentDashboard />} />
         <Route path="/student/courses" element={<StudentCourses />} />
@@ -356,6 +358,7 @@ export default function App() {
         <Route path="/employer/placements" element={<EmployerPlacements />} />
 
         <Route path="/alumni/dashboard" element={<AlumniDashboard />} />
+      </Route>
       </Route>
 
       <Route path="/forgot-password" element={<PublicLayout><ForgotPassword /></PublicLayout>} />
