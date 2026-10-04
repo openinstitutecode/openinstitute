@@ -61,6 +61,7 @@ type Invoice = {
   amountPaid: string;
   status: string;
   dueDate: string;
+  lineItems?: { id: string; description: string; quantity: number; unitPrice: string; amount: string }[];
 };
 
 type FinancialClearance = {
@@ -198,11 +199,14 @@ export default function StudentFees() {
             {invoices && invoices.length === 0 && <p className="text-sm text-ink/50">No invoices on your account yet.</p>}
             {invoices && invoices.length > 0 && (
               <Table
-                columns={["Semester", "Due date", "Amount due", "Status"]}
+                columns={["Semester", "Due date", "Amount due", "Fee breakdown", "Status"]}
                 rows={invoices.map((i) => [
                   i.semester,
                   new Date(i.dueDate).toLocaleDateString(),
                   `KES ${Number(i.amountDue).toLocaleString()}`,
+                  i.lineItems?.length
+                    ? <ul className="space-y-1 text-left text-xs">{i.lineItems.map((line) => <li key={line.id}>{line.description}: KES {Number(line.amount).toLocaleString()}</li>)}</ul>
+                    : "—",
                   <Badge tone={i.status === "paid" ? "ok" : i.status === "overdue" ? "danger" : "warn"}>{i.status}</Badge>,
                 ])}
               />

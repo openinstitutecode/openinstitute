@@ -20,7 +20,7 @@ financeRouter.get("/invoices/mine", requireAuth, async (req: AuthedRequest, res)
 
   const invoices = await prisma.invoice.findMany({
     where: { studentId: student.id },
-    include: { payments: true },
+    include: { payments: true, lineItems: true },
     orderBy: { dueDate: "desc" },
   });
   res.json(invoices);

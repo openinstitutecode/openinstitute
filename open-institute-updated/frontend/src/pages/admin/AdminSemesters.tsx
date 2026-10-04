@@ -81,6 +81,10 @@ type Semester = {
   assessmentStart: string;
   assessmentEnd: string;
   resultsDueDate: string;
+  termWeeks: number;
+  maxCreditsPerTerm: number;
+  creditRate: number;
+  adminFee: string;
   isActive: boolean;
   programme: { id: string; name: string };
 };
@@ -96,6 +100,8 @@ const blankForm = {
   assessmentStart: "",
   assessmentEnd: "",
   resultsDueDate: "",
+  maxCreditsPerTerm: "24",
+  creditRate: "300",
 };
 
 export default function AdminSemesters() {
@@ -155,8 +161,8 @@ export default function AdminSemesters() {
     <PortalShell role="Admin portal" links={links} userName={userName}>
       <h1 className="font-display text-2xl">Semester management</h1>
       <p className="mt-2 max-w-prose text-sm text-ink/60">
-        Configure the semester calendar per programme — registration
-        window, assessment window, results due date — and mark which one
+        Configure continuous 8-week terms, registration and assessment windows, workload limits, and per-credit pricing. Students must register for at least 8 credits and can be capped at 24-36 credits.
+        Each term adds a KES 1,000 administration fee; industrial fees are configured separately in Fee Structure. Mark which term
         is currently active. Registrar / Super Admin only for changes;
         deleting requires Super Admin.
       </p>
@@ -168,13 +174,21 @@ export default function AdminSemesters() {
           <form onSubmit={createSemester} className="space-y-3">
             <input value={form.programmeId} onChange={(e) => setField("programmeId", e.target.value)} placeholder="Programme ID" className="input" required />
             <div className="flex gap-3">
-              <select value={form.semesterNumber} onChange={(e) => setField("semesterNumber", e.target.value)} className="input">
-                <option value="1">Semester 1</option>
-                <option value="2">Semester 2</option>
-                <option value="3">Semester 3</option>
-              </select>
+              <input type="number" min="1" value={form.semesterNumber} onChange={(e) => setField("semesterNumber", e.target.value)} aria-label="Term number" className="input w-28" required />
               <input value={form.academicYear} onChange={(e) => setField("academicYear", e.target.value)} placeholder="Academic year, e.g. 2026/2027" className="input" required />
             </div>
+            <p className="text-xs text-ink/55">Term dates must span exactly 56 calendar days (8 weeks, inclusive).</p>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <label>
+                <span className="text-xs text-ink/60">Maximum credits (24-36)</span>
+                <input type="number" min="24" max="36" value={form.maxCreditsPerTerm} onChange={(e) => setField("maxCreditsPerTerm", e.target.value)} className="input mt-1" required />
+              </label>
+              <label>
+                <span className="text-xs text-ink/60">KES per credit (300-500)</span>
+                <input type="number" min="300" max="500" value={form.creditRate} onChange={(e) => setField("creditRate", e.target.value)} className="input mt-1" required />
+              </label>
+            </div>
+            <p className="text-xs text-ink/55">KES 1,000 term administration fee is added automatically. Industrial fees are pulled from the programme's Fee Structure.</p>
             {(
               [
                 ["startDate", "Start date"],
@@ -205,10 +219,10 @@ export default function AdminSemesters() {
                 <div className="flex items-start justify-between gap-3">
                   <div>
                     <p className="text-sm font-medium">
-                      {s.programme.name} — Semester {s.semesterNumber}, {s.academicYear}
+                            {s.programme.name} — Term {s.semesterNumber}, {s.academicYear}
                     </p>
                     <p className="mt-1 text-xs text-ink/50">
-                      {new Date(s.startDate).toLocaleDateString()} – {new Date(s.endDate).toLocaleDateString()} · results due{" "}
+                            {new Date(s.startDate).toLocaleDateString()} – {new Date(s.endDate).toLocaleDateString()} · {s.termWeeks} weeks · max {s.maxCreditsPerTerm} credits · KES {s.creditRate}/credit · KES {Number(s.adminFee).toLocaleString()} admin fee · results due{" "}
                       {new Date(s.resultsDueDate).toLocaleDateString()}
                     </p>
                   </div>

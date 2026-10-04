@@ -8,7 +8,7 @@ export const curriculumRouter = Router();
 curriculumRouter.get(
   "/programmes",
   requireAuth,
-  requireRole("PROGRAMME_COORDINATOR", "DEPARTMENT_HEAD", "QA_OFFICER", "SUPER_ADMIN"),
+  requireRole("PROGRAMME_COORDINATOR", "DEPARTMENT_HEAD", "REGISTRAR", "QA_OFFICER", "SUPER_ADMIN"),
   async (_req: AuthedRequest, res) => {
     const programmes = await prisma.programme.findMany({
       include: { units: true, awardingBody: { select: { name: true } } },
@@ -154,7 +154,7 @@ const unitCreateSchema = z.object({
 curriculumRouter.post(
   "/units",
   requireAuth,
-  requireRole("PROGRAMME_COORDINATOR", "DEPARTMENT_HEAD", "SUPER_ADMIN"),
+  requireRole("PROGRAMME_COORDINATOR", "DEPARTMENT_HEAD", "REGISTRAR", "SUPER_ADMIN"),
   async (req: AuthedRequest, res) => {
     const parsed = unitCreateSchema.safeParse(req.body);
     if (!parsed.success) return res.status(400).json({ message: "Invalid unit — check every required field." });
@@ -183,6 +183,7 @@ curriculumRouter.post(
 
 const unitChangeSchema = z.object({
   title: z.string().optional(),
+  creditHours: z.number().int().min(1).max(36).optional(),
   learningOutcomes: z.array(z.string()).optional(),
 });
 
@@ -192,7 +193,7 @@ const unitChangeSchema = z.object({
 curriculumRouter.patch(
   "/units/:id",
   requireAuth,
-  requireRole("PROGRAMME_COORDINATOR", "DEPARTMENT_HEAD", "SUPER_ADMIN"),
+  requireRole("PROGRAMME_COORDINATOR", "DEPARTMENT_HEAD", "REGISTRAR", "SUPER_ADMIN"),
   async (req: AuthedRequest, res) => {
     const parsed = unitChangeSchema.safeParse(req.body);
     if (!parsed.success) return res.status(400).json({ message: "Invalid unit change." });

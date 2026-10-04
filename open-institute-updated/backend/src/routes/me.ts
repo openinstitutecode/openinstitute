@@ -1,9 +1,11 @@
 import { canSeeScore } from "../lib/quiz-engine.js"; // Batch 76
-import { Router } from "express";
+import { Response, Router } from "express";
 import { z } from "zod";
 import { prisma } from "../lib/prisma.js";
 import { requireAuth, AuthedRequest } from "../middleware/auth.js";
 import { emitPortalEvent } from "../integration/events.js";
+import type { Unit } from "@prisma/client";
+import { calculateTermInvoice, creditLoadViolation, endOfUtcDate, isEightWeekTerm } from "../lib/term-registration.js";
 
 export const meRouter = Router();
 
@@ -180,79 +182,352 @@ meRouter.get("/enrollments", requireAuth, async (req: AuthedRequest, res) => {
   res.json(enrollments);
 });
 
-// SP012/RG005 — self-service course registration. Prevents duplicate
-// registration for the same unit/semester and validates the unit actually
-// belongs to the student's own programme (SP013 registration validation).
-const registerSchema = z.object({ unitId: z.string(), semester: z.string() });
+const registrationLabel = (term: { academicYear: string; semesterNumber: number }) =>
+  `${term.academicYear} Term ${term.semesterNumber}`;
 
-meRouter.post("/register-unit", requireAuth, async (req: AuthedRequest, res) => {
-  const parsed = registerSchema.safeParse(req.body);
-  if (!parsed.success) return res.status(400).json({ message: "Choose a unit and semester." });
+// SP012/RG005 — term-aware self-service registration. A student chooses a
+// batch of courses/standalone units so the 8-credit minimum can be checked
+// against the complete workload, not one request at a time.
+meRouter.get("/term-registration", requireAuth, async (req: AuthedRequest, res) => {
+  const student = await prisma.student.findUnique({ where: { userId: req.user!.id } });
+  if (!student) return res.status(404).json({ message: "No student record for this account." });
+
+  const now = new Date();
+  const term = await prisma.semesterConfig.findFirst({
+    where: { programmeId: student.programmeId, isActive: true },
+    include: { programme: { select: { name: true } } },
+    orderBy: { startDate: "desc" },
+  });
+  if (!term) return res.json({ term: null, courses: [], standaloneUnits: [], enrolled: [], canRegister: false, blockReason: "No active term has been configured for your programme." });
+
+  const label = registrationLabel(term);
+  const isOpen = term.registrationOpen <= now && endOfUtcDate(term.registrationClose) >= now;
+  const dateValid = isEightWeekTerm(term.startDate, term.endDate);
+  const entries = await prisma.courseCatalogueEntry.findMany({
+    where: { isVisible: true, course: { publishedAt: { not: null }, unit: { programmeId: student.programmeId } } },
+    include: {
+      course: {
+        include: { unit: true, trainer: true },
+      },
+    },
+    orderBy: { course: { title: "asc" } },
+  });
+  const registered = await prisma.enrollment.findMany({
+    where: { studentId: student.id, semester: label, status: { not: "withdrawn" } },
+    include: { unit: true, course: { include: { catalogueEntry: true } } },
+  });
+  const enrolledUnitIds = new Set(registered.map((enrollment) => enrollment.unitId));
+  const visibleUnitIds = new Set(entries.map((entry) => entry.course.unitId));
+  const units = await prisma.unit.findMany({
+    where: {
+      programmeId: student.programmeId,
+      courses: { none: { catalogueEntry: { isVisible: true }, publishedAt: { not: null } } },
+    },
+    orderBy: [{ semester: "asc" }, { code: "asc" }],
+  });
+  const priorTerms = await prisma.semesterConfig.findMany({
+    where: { programmeId: student.programmeId, endDate: { lt: now } },
+    select: { id: true, endDate: true },
+  });
+  const finishedPriorTerms = priorTerms.filter((previous) => endOfUtcDate(previous.endDate) < now);
+  const priorInvoices = finishedPriorTerms.length
+    ? await prisma.invoice.findMany({
+        where: { studentId: student.id, termConfigId: { in: finishedPriorTerms.map((previous) => previous.id) } },
+        select: { semester: true, amountDue: true, amountPaid: true },
+      })
+    : [];
+  const outstandingPriorInvoice = priorInvoices.find((invoice) => Number(invoice.amountDue) > Number(invoice.amountPaid));
+  const termInvoice = await prisma.invoice.findUnique({
+    where: { studentId_termConfigId: { studentId: student.id, termConfigId: term.id } },
+    include: { lineItems: true },
+  });
+  const currentCredits = registered.reduce(
+    (sum, enrollment) => sum + (enrollment.creditsAtRegistration ?? enrollment.course?.catalogueEntry?.credits ?? enrollment.unit.creditHours),
+    0,
+  );
+  const industrialItems = await prisma.feeStructureItem.findMany({
+    where: { programmeId: student.programmeId, semester: term.semesterNumber, item: { contains: "industrial", mode: "insensitive" } },
+    select: { item: true, amount: true },
+  });
+  const previousLines = termInvoice?.lineItems ?? [];
+  const industrialFee = previousLines.some((line) => line.category === "INDUSTRIAL")
+    ? previousLines.filter((line) => line.category === "INDUSTRIAL").reduce((sum, line) => sum + Number(line.amount), 0)
+    : industrialItems.reduce((sum, item) => sum + Number(item.amount), 0);
+  const adminFee = previousLines.find((line) => line.category === "ADMIN_FEE")?.amount ?? term.adminFee;
+  const creditRate = previousLines.find((line) => line.category === "TUITION")?.unitPrice ?? term.creditRate;
+
+  res.json({
+    term: {
+      id: term.id,
+      label,
+      programmeName: term.programme.name,
+      startDate: term.startDate,
+      endDate: term.endDate,
+      registrationClose: term.registrationClose,
+      termWeeks: term.termWeeks,
+      minimumCredits: 8,
+      maxCredits: term.maxCreditsPerTerm,
+      creditRate: Number(creditRate),
+      adminFee: Number(adminFee),
+      industrialFee,
+    },
+    courses: entries.map((entry) => ({
+      courseId: entry.courseId,
+      unitId: entry.course.unitId,
+      title: entry.course.title,
+      unitCode: entry.course.unit.code,
+      unitTitle: entry.course.unit.title,
+      credits: entry.credits ?? entry.course.unit.creditHours,
+      trainerName: entry.course.trainer?.fullName ?? "Unassigned",
+      prerequisiteUnitIds: entry.course.unit.prerequisiteUnitIds,
+      alreadyRegistered: enrolledUnitIds.has(entry.course.unitId),
+    })),
+    standaloneUnits: units.filter((unit) => !visibleUnitIds.has(unit.id)).map((unit) => ({
+      unitId: unit.id,
+      title: unit.title,
+      code: unit.code,
+      credits: unit.creditHours,
+      prerequisiteUnitIds: unit.prerequisiteUnitIds,
+      alreadyRegistered: enrolledUnitIds.has(unit.id),
+    })),
+    enrolled: registered.map((enrollment) => ({
+      unitId: enrollment.unitId,
+      courseId: enrollment.courseId,
+      title: enrollment.course?.title ?? enrollment.unit.title,
+      code: enrollment.unit.code,
+      credits: enrollment.course?.catalogueEntry?.credits ?? enrollment.unit.creditHours,
+    })),
+    currentCredits,
+    canRegister: isOpen && dateValid && !outstandingPriorInvoice,
+    blockReason: outstandingPriorInvoice
+      ? `Settle the outstanding invoice for ${outstandingPriorInvoice.semester} before registering for this new term.`
+      : !dateValid
+        ? "This term is not configured for exactly 8 weeks. Ask the registrar to correct the term dates."
+        : !isOpen
+          ? "Registration is not currently open for this term."
+          : null,
+    invoice: termInvoice,
+  });
+});
+
+const registerBatchSchema = z.object({
+  termConfigId: z.string().min(1),
+  selections: z.array(z.object({
+    unitId: z.string().min(1),
+    courseId: z.string().min(1).optional(),
+  })).min(1).max(36),
+}).refine((value) => new Set(value.selections.map((selection) => selection.unitId)).size === value.selections.length, {
+  message: "Select each unit only once.",
+});
+
+const registerUnitsHandler = async (req: AuthedRequest, res: Response) => {
+  const parsed = registerBatchSchema.safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ message: "Choose one or more distinct courses or units to register." });
 
   const student = await prisma.student.findUnique({ where: { userId: req.user!.id } });
   if (!student) return res.status(404).json({ message: "No student record for this account." });
 
-  const unit = await prisma.unit.findUnique({ where: { id: parsed.data.unitId } });
-  if (!unit || unit.programmeId !== student.programmeId) {
-    return res.status(400).json({ message: "That unit isn't part of your programme." });
+  const term = await prisma.semesterConfig.findUnique({ where: { id: parsed.data.termConfigId } });
+  if (!term || term.programmeId !== student.programmeId || !term.isActive) {
+    return res.status(409).json({ message: "The selected term is not active for your programme." });
+  }
+  const now = new Date();
+  if (!isEightWeekTerm(term.startDate, term.endDate)) {
+    return res.status(409).json({ message: "This term is not configured for exactly 8 weeks. Ask the registrar to correct the term dates." });
+  }
+  if (term.registrationOpen > now || endOfUtcDate(term.registrationClose) < now) {
+    return res.status(409).json({ message: "Registration is not currently open for this term." });
   }
 
-  // LMS020 — prerequisite rules: block registration until every listed
-  // prerequisite unit is completed. Enforced here, not just in the UI, so
-  // this can't be bypassed by calling the API directly.
-  if (unit.prerequisiteUnitIds.length > 0) {
-    const completed = await prisma.enrollment.findMany({
-      where: { studentId: student.id, unitId: { in: unit.prerequisiteUnitIds }, status: "completed" },
-      select: { unitId: true },
-    });
-    const completedIds = new Set(completed.map((e: { unitId: string }) => e.unitId));
-    const missingIds = unit.prerequisiteUnitIds.filter((id: string) => !completedIds.has(id));
-    if (missingIds.length > 0) {
-      const missing = await prisma.unit.findMany({ where: { id: { in: missingIds } }, select: { code: true, title: true } });
-      return res.status(409).json({
-        message: `You need to complete ${missing.map((u: { code: string; title: string }) => `${u.code} (${u.title})`).join(", ")} before registering for this unit.`,
+  const priorTerms = await prisma.semesterConfig.findMany({
+    where: { programmeId: student.programmeId, endDate: { lt: now } },
+    select: { id: true, endDate: true },
+  });
+  const finishedPriorTerms = priorTerms.filter((previous) => endOfUtcDate(previous.endDate) < now);
+  const priorInvoices = finishedPriorTerms.length
+    ? await prisma.invoice.findMany({
+        where: { studentId: student.id, termConfigId: { in: finishedPriorTerms.map((previous) => previous.id) } },
+        select: { semester: true, amountDue: true, amountPaid: true },
+      })
+    : [];
+  const outstandingPriorInvoice = priorInvoices.find((invoice) => Number(invoice.amountDue) > Number(invoice.amountPaid));
+  if (outstandingPriorInvoice) {
+    return res.status(409).json({ message: `Settle the outstanding invoice for ${outstandingPriorInvoice.semester} before registering for this new term.` });
+  }
+
+  const label = registrationLabel(term);
+  const selections: Array<{ unit: Unit; courseId: string | null; credits: number }> = [];
+  for (const selection of parsed.data.selections) {
+    const unit = await prisma.unit.findUnique({ where: { id: selection.unitId } });
+    if (!unit || unit.programmeId !== student.programmeId) {
+      return res.status(400).json({ message: "A selected unit isn't part of your programme." });
+    }
+    let courseId: string | null = null;
+    let credits = unit.creditHours;
+    if (selection.courseId) {
+      const course = await prisma.course.findUnique({
+        where: { id: selection.courseId },
+        include: { catalogueEntry: true },
       });
+      if (!course || !course.publishedAt || course.unitId !== unit.id || !course.catalogueEntry?.isVisible) {
+        return res.status(400).json({ message: "A selected course is not available in your programme catalogue." });
+      }
+      courseId = course.id;
+      credits = course.catalogueEntry.credits ?? unit.creditHours;
+    }
+    if (unit.prerequisiteUnitIds.length) {
+      const completed = await prisma.enrollment.findMany({
+        where: { studentId: student.id, unitId: { in: unit.prerequisiteUnitIds }, status: "completed" },
+        select: { unitId: true },
+      });
+      const completedIds = new Set(completed.map((enrollment) => enrollment.unitId));
+      const missingIds = unit.prerequisiteUnitIds.filter((id) => !completedIds.has(id));
+      if (missingIds.length) {
+        const missing = await prisma.unit.findMany({ where: { id: { in: missingIds } }, select: { code: true, title: true } });
+        return res.status(409).json({
+          message: `Complete ${missing.map((item) => `${item.code} (${item.title})`).join(", ")} before registering for this unit.`,
+        });
+      }
+    }
+    selections.push({ unit, courseId, credits });
+  }
+
+  const existing = await prisma.enrollment.findMany({
+    where: { studentId: student.id, semester: label, status: { not: "withdrawn" } },
+    include: { unit: true, course: { include: { catalogueEntry: true } } },
+  });
+  const existingUnitIds = new Set(existing.map((enrollment) => enrollment.unitId));
+  if (selections.some((selection) => existingUnitIds.has(selection.unit.id))) {
+    return res.status(409).json({ message: "One or more selected units are already registered for this term." });
+  }
+  const currentCredits = existing.reduce(
+    (sum, enrollment) => sum + (enrollment.creditsAtRegistration ?? enrollment.course?.catalogueEntry?.credits ?? enrollment.unit.creditHours),
+    0,
+  );
+  const requestedCredits = selections.reduce((sum, selection) => sum + selection.credits, 0);
+  const totalCredits = currentCredits + requestedCredits;
+  const creditViolation = creditLoadViolation(totalCredits, term.maxCreditsPerTerm);
+  if (creditViolation === "minimum") {
+    return res.status(400).json({ message: `Register at least 8 credits per term. Your selection totals ${totalCredits} credits.` });
+  }
+  if (creditViolation === "maximum") {
+    return res.status(400).json({ message: `Your total would be ${totalCredits} credits, above this term's ${term.maxCreditsPerTerm}-credit limit.` });
+  }
+
+  const previousInvoice = await prisma.invoice.findUnique({
+    where: { studentId_termConfigId: { studentId: student.id, termConfigId: term.id } },
+    include: { lineItems: true },
+  });
+  const previousLines = previousInvoice?.lineItems ?? [];
+  const industrialItems = previousLines.some((line) => line.category === "INDUSTRIAL")
+    ? previousLines.filter((line) => line.category === "INDUSTRIAL").map((line) => ({ item: line.description, amount: line.amount }))
+    : await prisma.feeStructureItem.findMany({
+        where: { programmeId: student.programmeId, semester: term.semesterNumber, item: { contains: "industrial", mode: "insensitive" } },
+        select: { item: true, amount: true },
+      });
+  const industrialFee = industrialItems.reduce((sum, item) => sum + Number(item.amount), 0);
+  const adminFee = Number(previousLines.find((line) => line.category === "ADMIN_FEE")?.amount ?? term.adminFee);
+  const creditRate = Number(previousLines.find((line) => line.category === "TUITION")?.unitPrice ?? term.creditRate);
+  const feeTotals = calculateTermInvoice(totalCredits, creditRate, adminFee, industrialFee);
+  const feeTotal = feeTotals.total;
+  const transactionResult = await prisma.$transaction(async (tx) => {
+    const created = [];
+    for (const selection of selections) {
+      const enrollment = await tx.enrollment.create({
+        data: {
+          studentId: student.id,
+          unitId: selection.unit.id,
+          courseId: selection.courseId,
+          creditsAtRegistration: selection.credits,
+          semester: label,
+        },
+      });
+      created.push({ enrollment, unit: selection.unit });
+    }
+
+    const invoice = await tx.invoice.findUnique({
+      where: { studentId_termConfigId: { studentId: student.id, termConfigId: term.id } },
+    });
+    const amountDue = Math.max(feeTotal, invoice ? Number(invoice.amountPaid) : 0);
+    const amountPaid = invoice ? Number(invoice.amountPaid) : 0;
+    const status = amountPaid >= amountDue ? "paid" : amountPaid > 0 ? "partial" : "unpaid";
+    const savedInvoice = invoice
+      ? await tx.invoice.update({
+          where: { id: invoice.id },
+          data: { amountDue, status },
+        })
+      : await tx.invoice.create({
+          data: {
+            studentId: student.id,
+            termConfigId: term.id,
+            semester: label,
+            amountDue: feeTotal,
+            amountPaid: 0,
+            dueDate: term.startDate,
+            status: "unpaid",
+          },
+        });
+    const termEnrollments = await tx.enrollment.findMany({
+      where: { studentId: student.id, semester: label, status: "in_progress" },
+      include: { unit: true, course: { include: { catalogueEntry: true } } },
+    });
+    const lineItems = termEnrollments.map((enrollment) => {
+      const credits = enrollment.creditsAtRegistration ?? enrollment.course?.catalogueEntry?.credits ?? enrollment.unit.creditHours;
+      return {
+        description: `Tuition - ${enrollment.unit.code}: ${enrollment.course?.title ?? enrollment.unit.title}`,
+        category: "TUITION",
+        quantity: credits,
+        unitPrice: creditRate,
+        amount: credits * creditRate,
+      };
+    });
+    lineItems.push({ description: "Term administration fee", category: "ADMIN_FEE", quantity: 1, unitPrice: adminFee, amount: adminFee });
+    for (const item of industrialItems) {
+      lineItems.push({ description: item.item, category: "INDUSTRIAL", quantity: 1, unitPrice: Number(item.amount), amount: Number(item.amount) });
+    }
+    await tx.invoiceLineItem.deleteMany({ where: { invoiceId: savedInvoice.id } });
+    for (const item of lineItems) {
+      await tx.invoiceLineItem.create({ data: { ...item, invoiceId: savedInvoice.id } });
+    }
+    return { created, invoice: await tx.invoice.findUniqueOrThrow({ where: { id: savedInvoice.id }, include: { lineItems: true } }) };
+  }, { isolationLevel: "Serializable" }).catch((error: unknown) => {
+    if (error && typeof error === "object" && "code" in error && (error.code === "P2002" || error.code === "P2034")) return null;
+    throw error;
+  });
+  if (!transactionResult) return res.status(409).json({ message: "Your registration changed while saving. Refresh the page and try again." });
+
+  for (const { enrollment, unit } of transactionResult.created) {
+    if (unit.vblEnabled) {
+      emitPortalEvent({
+        eventType: "enrollment.created",
+        entityType: "Enrollment",
+        entityId: enrollment.id,
+        payload: {
+          portalStudentId: student.id,
+          registrationNumber: student.studentNumber,
+          unitId: unit.id,
+          unitCode: unit.code,
+          semester: enrollment.semester,
+        },
+      }).catch((err) => console.error("Failed to queue enrollment.created for VBL sync", err));
     }
   }
-
-  const existing = await prisma.enrollment.findUnique({
-    where: {
-      studentId_unitId_semester: {
-        studentId: student.id,
-        unitId: unit.id,
-        semester: parsed.data.semester,
-      },
+  res.status(201).json({
+    enrollments: transactionResult.created.map(({ enrollment }) => enrollment),
+    invoice: transactionResult.invoice,
+    feeBreakdown: {
+      tuition: feeTotals.tuition,
+      adminFee: Number(term.adminFee),
+      industrialFee,
+      total: feeTotal,
+      credits: totalCredits,
+      creditRate,
     },
   });
-  if (existing) return res.status(409).json({ message: "You're already registered for this unit this semester." });
+};
 
-  const enrollment = await prisma.enrollment.create({
-    data: { studentId: student.id, unitId: unit.id, semester: parsed.data.semester },
-  });
-
-  // Batch 65 — VBI004: if this unit has a Virtual Business Lab mapping,
-  // let the Lab know so it can provision the student's access. Fire-and-
-  // forget: the ledger row is written synchronously (so it's never lost),
-  // but delivery happens on the next dispatchPendingEvents() tick — a
-  // slow/unreachable Lab must never block registration (see the "failure
-  // isolation" principle in docs/VBL_MAIN_PORTAL_INTEGRATION_ARCHITECTURE.md).
-  if (unit.vblEnabled) {
-    emitPortalEvent({
-      eventType: "enrollment.created",
-      entityType: "Enrollment",
-      entityId: enrollment.id,
-      payload: {
-        portalStudentId: student.id,
-        registrationNumber: student.studentNumber,
-        unitId: unit.id,
-        unitCode: unit.code,
-        semester: enrollment.semester,
-      },
-    }).catch((err) => console.error("Failed to queue enrollment.created for VBL sync", err));
-  }
-
-  res.status(201).json(enrollment);
-});
+meRouter.post("/register-units", requireAuth, registerUnitsHandler);
+meRouter.post("/register-unit", requireAuth, registerUnitsHandler);
 
 
 // EX027 companion — only published results are visible to the student,
@@ -427,14 +702,17 @@ meRouter.get("/courses", requireAuth, async (req: AuthedRequest, res) => {
     include: {
       enrollments: {
         where: { status: "in_progress" },
-        include: { unit: { include: { courses: { include: { trainer: true } } } } },
+        include: {
+          unit: { include: { courses: { include: { trainer: true } } } },
+          course: { include: { trainer: true } },
+        },
       },
     },
   });
   if (!student) return res.status(404).json({ message: "No student record for this account." });
 
   const courses = student.enrollments.flatMap((e) =>
-    e.unit.courses.map((c) => ({
+    (e.course ? [e.course] : e.unit.courses).map((c) => ({
       courseId: c.id,
       title: c.title,
       unitTitle: e.unit.title,

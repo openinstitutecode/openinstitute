@@ -42,12 +42,14 @@ type CourseRow = {
   moodleSyncedAt: string | null;
   unit: { id: string; code: string; title: string; programme: { name: string } };
   trainer: { id: string; fullName: string } | null;
+  catalogueEntry: { credits: number | null } | null;
 };
 
 type DraftCourse = {
   unitId: string;
   trainerId: string;
   title: string;
+  credits: number | null;
   description: string;
   lmsEngine: "CUSTOM" | "MOODLE";
   published: boolean;
@@ -64,6 +66,7 @@ const emptyDraft: DraftCourse = {
   unitId: "",
   trainerId: "",
   title: "",
+  credits: null,
   description: "",
   lmsEngine: "CUSTOM",
   published: false,
@@ -76,6 +79,7 @@ export default function AdminCourses() {
   const [trainerAssignments, setTrainerAssignments] = useState<Record<string, string>>({});
   const [savingTrainerFor, setSavingTrainerFor] = useState<string | null>(null);
   const [canManageCourses, setCanManageCourses] = useState(false);
+  const [canManageCatalogue, setCanManageCatalogue] = useState(false);
   const [draft, setDraft] = useState<DraftCourse>(emptyDraft);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -131,7 +135,10 @@ export default function AdminCourses() {
   useEffect(load, []);
   useEffect(() => {
     apiFetch<{ role: string }>("/me/whoami")
-      .then(({ role }) => setCanManageCourses(["SUPER_ADMIN", "ICT_ADMIN", "PROGRAMME_COORDINATOR", "DEPARTMENT_HEAD"].includes(role)))
+      .then(({ role }) => {
+        setCanManageCourses(["SUPER_ADMIN", "ICT_ADMIN", "PROGRAMME_COORDINATOR", "DEPARTMENT_HEAD"].includes(role));
+        setCanManageCatalogue(["SUPER_ADMIN", "ICT_ADMIN", "PROGRAMME_COORDINATOR", "DEPARTMENT_HEAD", "REGISTRAR"].includes(role));
+      })
       .catch(() => setCanManageCourses(false));
   }, []);
 
@@ -141,6 +148,7 @@ export default function AdminCourses() {
       unitId: c.unit.id,
       trainerId: c.trainer?.id ?? "",
       title: c.title,
+      credits: c.catalogueEntry?.credits ?? null,
       description: c.description ?? "",
       lmsEngine: c.lmsEngine,
       published: Boolean(c.publishedAt),
@@ -166,6 +174,7 @@ export default function AdminCourses() {
       unitId: draft.unitId,
       trainerId: draft.trainerId || null,
       title: draft.title,
+      credits: draft.credits,
       description: draft.description || undefined,
       lmsEngine: draft.lmsEngine,
       published: draft.published,
@@ -289,6 +298,10 @@ export default function AdminCourses() {
                 placeholder="e.g. Introduction to Digital Business"
               />
             </label>
+            <label className="block">
+              <span className="text-xs text-ink/60">Course credits (1-36; if blank, the unit credits apply)</span>
+              <input type="number" min={1} max={36} value={draft.credits ?? ""} onChange={(e) => setDraft({ ...draft, credits: e.target.value ? Number(e.target.value) : null })} className="input mt-1" />
+            </label>
 
             <label className="block">
               <span className="mb-1 block text-xs text-ink/50">Description (optional)</span>
@@ -407,7 +420,7 @@ export default function AdminCourses() {
                       {canManageCourses && <button onClick={() => void deleteCourse(c)} className="text-xs font-medium text-red-700 hover:underline">
                         Delete
                       </button>}
-                      {canManageCourses && <button onClick={() => setCatalogueCourseId(catalogueCourseId === c.id ? null : c.id)} className="text-xs font-medium text-navy hover:underline">
+                      {canManageCatalogue && <button onClick={() => setCatalogueCourseId(catalogueCourseId === c.id ? null : c.id)} className="text-xs font-medium text-navy hover:underline">
                         {catalogueCourseId === c.id ? "Close catalogue" : "Catalogue"}
                       </button>}
                     </div>
@@ -437,7 +450,7 @@ export default function AdminCourses() {
                     {savingTrainerFor === c.id ? "Saving…" : "Save trainer"}
                   </button>
                 </div>
-                {canManageCourses && catalogueCourseId === c.id && <CatalogueEditor courseId={c.id} allCourses={courses ?? []} />}
+                {canManageCatalogue && catalogueCourseId === c.id && <CatalogueEditor courseId={c.id} allCourses={courses ?? []} />}
               </li>
             ))}
           </ul>
@@ -485,17 +498,12 @@ function CatalogueEditor({ courseId, allCourses }: { courseId: string; allCourse
   const [msg, setMsg] = useState<string | null>(null);
 
   useEffect(() => {
-    apiFetch<Array<{ courseId: string; isVisible: boolean; shortCode: string | null; credits: number | null; level: string | null; prerequisites: string[]; keywords: string[] }>>(
-      "/courses/catalogue/browse"
-    )
-      .then((all) => {
-        const existing = all.find((e) => e.courseId === courseId);
-        if (existing) {
-          setEntry(existing);
-          setKeywordsText(existing.keywords.join(", "));
-        }
+    apiFetch<Entry>(`/courses/${courseId}/catalogue`)
+      .then((existing) => {
+        setEntry(existing);
+        setKeywordsText(existing.keywords.join(", "));
       })
-      .catch(() => undefined);
+      .catch((err) => setMsg(err instanceof Error ? err.message : "Could not load catalogue settings."));
   }, [courseId]);
 
   async function save() {
@@ -529,7 +537,7 @@ function CatalogueEditor({ courseId, allCourses }: { courseId: string; allCourse
       </label>
       <div className="grid grid-cols-3 gap-2">
         <input value={entry.shortCode ?? ""} onChange={(e) => setEntry({ ...entry, shortCode: e.target.value })} placeholder="Short code" className="input" />
-        <input type="number" value={entry.credits ?? ""} onChange={(e) => setEntry({ ...entry, credits: e.target.value ? Number(e.target.value) : null })} placeholder="Credits" className="input" />
+        <input type="number" min={1} max={36} value={entry.credits ?? ""} onChange={(e) => setEntry({ ...entry, credits: e.target.value ? Number(e.target.value) : null })} placeholder="Credits" className="input" />
         <select value={entry.level ?? ""} onChange={(e) => setEntry({ ...entry, level: e.target.value })} className="input">
           <option value="">Level…</option>
           <option value="foundation">Foundation</option>
@@ -537,6 +545,7 @@ function CatalogueEditor({ courseId, allCourses }: { courseId: string; allCourse
           <option value="advanced">Advanced</option>
         </select>
       </div>
+      <p className="text-xs text-ink/50">Course credits override the linked unit's credits for student registration and term billing.</p>
       <input value={keywordsText} onChange={(e) => setKeywordsText(e.target.value)} placeholder="Keywords, comma-separated" className="input w-full" />
       <fieldset>
         <legend className="mb-1 text-xs text-ink/50">Recommended prerequisites (shown to students, not enforced here — see the unit's prerequisite units for actual registration blocking)</legend>

@@ -71,7 +71,7 @@ const links = [
   { to: "/admin/decision-centre", label: "Executive Decision Centre" },
 ];
 
-type Unit = { id: string; code: string; title: string };
+type Unit = { id: string; code: string; title: string; creditHours: number };
 type Programme = {
   id: string;
   slug: string;
@@ -99,7 +99,7 @@ export default function AdminCurriculum() {
   const userName = useCurrentUserName();
   const [programmes, setProgrammes] = useState<Programme[] | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [editing, setEditing] = useState<{ unitId: string; title: string } | null>(null);
+  const [editing, setEditing] = useState<{ unitId: string; title: string; creditHours: number } | null>(null);
 
   // AD010 — new programme
   const [showNewProgramme, setShowNewProgramme] = useState(false);
@@ -125,6 +125,7 @@ export default function AdminCurriculum() {
   const [nuCode, setNuCode] = useState("");
   const [nuTitle, setNuTitle] = useState("");
   const [nuSemester, setNuSemester] = useState(1);
+  const [nuCredits, setNuCredits] = useState(3);
   const [nuMsg, setNuMsg] = useState<string | null>(null);
 
   // QA013 — curriculum compliance check
@@ -155,7 +156,7 @@ export default function AdminCurriculum() {
     try {
       await apiFetch(`/curriculum/units/${editing.unitId}`, {
         method: "PATCH",
-        body: JSON.stringify({ title: editing.title }),
+        body: JSON.stringify({ title: editing.title, creditHours: editing.creditHours }),
       });
       setEditing(null);
       load();
@@ -231,12 +232,13 @@ export default function AdminCurriculum() {
     try {
       await apiFetch("/curriculum/units", {
         method: "POST",
-        body: JSON.stringify({ programmeId, code: nuCode, title: nuTitle, semester: nuSemester }),
+        body: JSON.stringify({ programmeId, code: nuCode, title: nuTitle, semester: nuSemester, creditHours: nuCredits }),
       });
       setAddingUnitTo(null);
       setNuCode("");
       setNuTitle("");
       setNuSemester(1);
+      setNuCredits(3);
       load();
     } catch (err) {
       setNuMsg(err instanceof Error ? err.message : "Could not add unit.");
@@ -359,25 +361,34 @@ export default function AdminCurriculum() {
                   {editing?.unitId === u.id ? (
                     <input
                       value={editing.title}
-                      onChange={(e) => setEditing({ unitId: u.id, title: e.target.value })}
+                      onChange={(e) => setEditing({ ...editing, title: e.target.value })}
                       className="input mr-3 flex-1"
                     />
                   ) : (
                     <span>
-                      <span className="font-mono text-xs text-ink/40">{u.code}</span> {u.title}
+                      <span className="font-mono text-xs text-ink/40">{u.code}</span> {u.title} <span className="text-xs text-ink/45">({u.creditHours} credits)</span>
                     </span>
                   )}
                   {editing?.unitId === u.id ? (
                     <div className="flex gap-2">
+                      <input
+                        type="number"
+                        min={1}
+                        max={36}
+                        value={editing.creditHours}
+                        onChange={(e) => setEditing({ ...editing, creditHours: Number(e.target.value) })}
+                        className="input w-24"
+                        aria-label="Unit credits"
+                      />
                       <button onClick={saveTitle} className="text-xs font-medium text-forest hover:underline">Save</button>
                       <button onClick={() => setEditing(null)} className="text-xs text-ink/50 hover:underline">Cancel</button>
                     </div>
                   ) : (
                     <button
-                      onClick={() => setEditing({ unitId: u.id, title: u.title })}
+                      onClick={() => setEditing({ unitId: u.id, title: u.title, creditHours: u.creditHours })}
                       className="text-xs font-medium text-navy hover:underline"
                     >
-                      Edit title
+                      Edit title/credits
                     </button>
                   )}
                 </li>
@@ -396,6 +407,16 @@ export default function AdminCurriculum() {
                     onChange={(e) => setNuSemester(Number(e.target.value))}
                     placeholder="Semester #"
                     className="input w-24"
+                  />
+                  <input
+                    type="number"
+                    min={1}
+                    max={36}
+                    value={nuCredits}
+                    onChange={(e) => setNuCredits(Number(e.target.value))}
+                    placeholder="Credits"
+                    className="input w-24"
+                    aria-label="Unit credits"
                   />
                   <button onClick={() => createUnit(p.id)} className="btn-primary">Add unit</button>
                   <button onClick={() => setAddingUnitTo(null)} className="btn-secondary">Cancel</button>

@@ -20,6 +20,7 @@ export const coursesRouter = Router();
 // stays in exactly one place.
 const ADMIN_COURSE_ROLES = ["SUPER_ADMIN", "ICT_ADMIN", "PROGRAMME_COORDINATOR", "DEPARTMENT_HEAD"];
 const COURSE_ASSIGNMENT_ROLES = [...ADMIN_COURSE_ROLES, "REGISTRAR"];
+const COURSE_CATALOGUE_ROLES = [...ADMIN_COURSE_ROLES, "REGISTRAR", "TRAINER"];
 
 // Real course content for the LMS view — modules, lessons, and the
 // requesting student's own progress markers (based on completed
@@ -158,7 +159,7 @@ coursesRouter.post("/:id/moodle-launch", requireAuth, async (req: AuthedRequest,
 // needs to show a Moodle status column without a second round trip.
 coursesRouter.get("/", requireAuth, requireRole(...COURSE_ASSIGNMENT_ROLES), async (_req, res) => {
   const courses = await prisma.course.findMany({
-    include: { unit: { include: { programme: true } }, trainer: true },
+    include: { unit: { include: { programme: true } }, trainer: true, catalogueEntry: true },
     orderBy: { title: "asc" },
   });
   res.json(courses);
@@ -180,6 +181,7 @@ const courseWriteSchema = z.object({
   unitId: z.string().min(1),
   trainerId: z.string().min(1).nullable().optional(),
   title: z.string().min(2),
+  credits: z.number().int().min(1).max(36).nullable().optional(),
   description: z.string().optional(),
   lmsEngine: z.enum(["CUSTOM", "MOODLE"]).optional(),
   published: z.boolean().optional(),
@@ -231,7 +233,7 @@ async function enrolExistingStudents(courseId: string, unitId: string) {
 coursesRouter.post("/", requireAuth, requireRole(...ADMIN_COURSE_ROLES), async (req, res) => {
   const parsed = courseWriteSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ message: "Invalid course details.", issues: parsed.error.flatten() });
-  const { unitId, trainerId, title, description, lmsEngine, published } = parsed.data;
+  const { unitId, trainerId, title, description, lmsEngine, published, credits } = parsed.data;
 
   try {
     const course = await prisma.course.create({
@@ -240,6 +242,11 @@ coursesRouter.post("/", requireAuth, requireRole(...ADMIN_COURSE_ROLES), async (
         trainerId: trainerId ?? null,
         title,
         description,
+        ...(credits !== undefined ? {
+          catalogueEntry: {
+            create: { credits, isVisible: true },
+          },
+        } : {}),
         lmsEngine: lmsEngine ?? "CUSTOM",
         publishedAt: published ? new Date() : null,
       },
@@ -291,12 +298,19 @@ coursesRouter.patch("/:id", requireAuth, requireRole(...ADMIN_COURSE_ROLES), asy
   const existing = await prisma.course.findUnique({ where: { id: req.params.id } });
   if (!existing) return res.status(404).json({ message: "Course not found." });
 
-  const { published, ...rest } = parsed.data;
+  const { published, credits, ...rest } = parsed.data;
   const data: Record<string, unknown> = { ...rest };
   if (published !== undefined) data.publishedAt = published ? existing.publishedAt ?? new Date() : null;
 
   try {
     const course = await prisma.course.update({ where: { id: req.params.id }, data });
+    if (credits !== undefined) {
+      await prisma.courseCatalogueEntry.upsert({
+        where: { courseId: course.id },
+        create: { courseId: course.id, credits, isVisible: true },
+        update: { credits },
+      });
+    }
     const switchedToMoodle = course.lmsEngine === "MOODLE" && existing.lmsEngine !== "MOODLE";
 
     const moodleStatus = await syncCourseToMoodle(course.id);
@@ -584,10 +598,37 @@ coursesRouter.get("/catalogue/browse", requireAuth, async (req, res) => {
 });
 
 // Update catalogue entry
-coursesRouter.post("/:courseId/catalogue", requireAuth, requireRole("TRAINER", "SUPER_ADMIN"), async (req, res) => {
+coursesRouter.get("/:courseId/catalogue", requireAuth, requireRole(...COURSE_CATALOGUE_ROLES), async (req, res) => {
+  const course = await prisma.course.findUnique({
+    where: { id: req.params.courseId },
+    select: { id: true },
+  });
+  if (!course) return res.status(404).json({ message: "Course not found." });
+  const entry = await prisma.courseCatalogueEntry.findUnique({ where: { courseId: course.id } });
+  res.json(entry ?? {
+    courseId: course.id,
+    isVisible: true,
+    shortCode: null,
+    credits: null,
+    level: null,
+    prerequisites: [],
+    keywords: [],
+  });
+});
+
+coursesRouter.post("/:courseId/catalogue", requireAuth, requireRole(...COURSE_CATALOGUE_ROLES), async (req, res) => {
   try {
     const { courseId } = req.params;
-    const { isVisible, shortCode, credits, level, prerequisites, keywords } = req.body;
+    const parsed = z.object({
+      isVisible: z.boolean().optional(),
+      shortCode: z.string().nullable().optional(),
+      credits: z.number().int().min(1).max(36).nullable().optional(),
+      level: z.string().nullable().optional(),
+      prerequisites: z.array(z.string()).optional(),
+      keywords: z.array(z.string()).optional(),
+    }).safeParse(req.body);
+    if (!parsed.success) return res.status(400).json({ message: "Course credits must be between 1 and 36; check the catalogue details." });
+    const { isVisible, shortCode, credits, level, prerequisites, keywords } = parsed.data;
 
     const existing = await prisma.courseCatalogueEntry.findUnique({
       where: { courseId },

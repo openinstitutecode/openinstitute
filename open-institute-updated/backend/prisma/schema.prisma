@@ -418,6 +418,7 @@ model Course {
   certificates         CourseCertificate[]
   announcements        CourseAnnouncement[]
   catalogueEntry       CourseCatalogueEntry?
+  enrollments          Enrollment[]
   deliveryPlan         CourseDeliveryPlan?
 
   // TP026 — live teaching (BigBlueButton-backed sessions for CUSTOM-engine courses)
@@ -789,6 +790,9 @@ model Enrollment {
   student    Student  @relation(fields: [studentId], references: [id])
   unitId     String
   unit       Unit     @relation(fields: [unitId], references: [id])
+  courseId   String?
+  course     Course?  @relation(fields: [courseId], references: [id], onDelete: SetNull)
+  creditsAtRegistration Int?
   semester   String
   status     String   @default("in_progress") // in_progress | completed | failed | withdrawn
   finalGrade String?
@@ -1259,14 +1263,33 @@ model Invoice {
   id         String   @id @default(cuid())
   studentId  String
   student    Student  @relation(fields: [studentId], references: [id])
+  termConfigId String?
+  termConfig   SemesterConfig? @relation(fields: [termConfigId], references: [id], onDelete: SetNull)
   semester   String
   amountDue  Decimal  @db.Decimal(10, 2)
   amountPaid Decimal  @default(0) @db.Decimal(10, 2)
   dueDate    DateTime
   status     String   @default("unpaid") // unpaid | partial | paid | overdue
   payments   Payment[]
+  lineItems  InvoiceLineItem[]
   installmentPlans InstallmentPlan[]
   createdAt  DateTime @default(now())
+
+  @@unique([studentId, termConfigId])
+}
+
+model InvoiceLineItem {
+  id          String   @id @default(cuid())
+  invoiceId   String
+  invoice     Invoice  @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  description String
+  category    String   // TUITION | ADMIN_FEE | INDUSTRIAL
+  quantity    Int      @default(1)
+  unitPrice   Decimal  @db.Decimal(10, 2)
+  amount      Decimal  @db.Decimal(10, 2)
+  createdAt   DateTime @default(now())
+
+  @@index([invoiceId])
 }
 
 model Payment {
@@ -3240,10 +3263,15 @@ model SemesterConfig {
   assessmentEnd   DateTime
   resultsDueDate  DateTime
   isActive        Boolean  @default(false)
+  termWeeks       Int      @default(8)
+  maxCreditsPerTerm Int    @default(24)
+  creditRate      Int      @default(300)
+  adminFee        Decimal  @default(1000) @db.Decimal(10, 2)
   createdBy       String
   createdByUser   User     @relation("SemesterCreated", fields: [createdBy], references: [id])
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
+  invoices        Invoice[]
   
   @@unique([programmeId, semesterNumber, academicYear])
   @@index([programmeId])
