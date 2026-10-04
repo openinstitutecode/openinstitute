@@ -9,6 +9,7 @@ const links = [
   { to: "/student/id-card", label: "Digital ID" },
   { to: "/student/roadmap", label: "Programme Roadmap" },
   { to: "/student/courses", label: "My Courses" },
+  { to: "/student/course-registration", label: "Course / Unit Registration" },
   { to: "/student/assignments", label: "Assignment Centre" },
   { to: "/student/exams", label: "Assessment Centre" },
   { to: "/student/alerts", label: "Academic Alerts" },
@@ -159,9 +160,18 @@ export default function StudentDashboard() {
 
           <div className="mt-8 grid gap-6 lg:grid-cols-3">
             <div className="lg:col-span-2 space-y-6">
+              <PortalSection title="Course / unit registration">
+                <p className="text-sm text-ink/60">
+                  Choose courses or units for the active 8-week term, check your credit load and fee estimate, and register online.
+                </p>
+                <a href="/student/course-registration" className="btn-primary mt-4 inline-flex">
+                  Register for courses or units
+                </a>
+              </PortalSection>
+
               <PortalSection title="Your units this semester">
                 {data.activeUnits.length === 0 ? (
-                  <p className="text-sm text-ink/50">Not registered for any units yet — use Course Registration to add one.</p>
+                  <p className="text-sm text-ink/50">Not registered for any units yet — use the Course / Unit Registration page to add some.</p>
                 ) : (
                   <Table
                     columns={["Unit", "Semester", "Status"]}

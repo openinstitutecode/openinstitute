@@ -62,6 +62,7 @@ const StudentAccessibility = lazy(() => import("./pages/student/StudentAccessibi
 const StudentCreditTransfer = lazy(() => import("./pages/student/StudentCreditTransfer"));
 const StudentTutorSessions = lazy(() => import("./pages/student/StudentTutorSessions"));
 const StudentCatalogue = lazy(() => import("./pages/student/StudentCatalogue"));
+const StudentCourseRegistration = lazy(() => import("./pages/student/StudentCourseRegistration"));
 const StudentContentLibrary = lazy(() => import("./pages/student/StudentContentLibrary"));
 const StudentLearningAnalytics = lazy(() => import("./pages/student/StudentLearningAnalytics"));
 const VerifyStudent = lazy(() => import("./pages/VerifyStudent"));
@@ -252,6 +253,7 @@ export default function App() {
         <Route path="/student/credit-transfer" element={<StudentCreditTransfer />} />
         <Route path="/student/tutor-sessions" element={<StudentTutorSessions />} />
         <Route path="/student/catalogue" element={<StudentCatalogue />} />
+        <Route path="/student/course-registration" element={<StudentCourseRegistration />} />
         <Route path="/student/content-library" element={<StudentContentLibrary />} />
         <Route path="/student/learning-analytics" element={<StudentLearningAnalytics />} />
 
