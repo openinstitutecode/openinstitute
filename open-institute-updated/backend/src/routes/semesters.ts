@@ -3,31 +3,10 @@ import { Router, Request, Response } from "express";
 import { z } from "zod";
 import { requireAuth } from "../middleware/auth.js";
 import { prisma } from "../lib/prisma.js";
-import { isEightWeekTerm } from "../lib/term-registration.js";
+import { isEightWeekTerm, normalizeTermSetup } from "../lib/term-registration.js";
 
 const router = Router();
 const TERM_MANAGER_ROLES = ["REGISTRAR", "SUPER_ADMIN", "ICT_ADMIN", "PRINCIPAL"];
-
-const termSettingsSchema = z.object({
-  maxCreditsPerTerm: z.coerce.number().int().min(24).max(36).default(24),
-  creditRate: z.coerce.number().int().min(300).max(500).default(300),
-});
-
-const createTermSchema = z.object({
-  programmeId: z.string().min(1),
-  semesterNumber: z.coerce.number().int().positive(),
-  academicYear: z.string().min(4),
-  startDate: z.coerce.date(),
-  endDate: z.coerce.date(),
-  registrationOpen: z.coerce.date(),
-  registrationClose: z.coerce.date(),
-  assessmentStart: z.coerce.date(),
-  assessmentEnd: z.coerce.date(),
-  resultsDueDate: z.coerce.date(),
-  maxCreditsPerTerm: termSettingsSchema.shape.maxCreditsPerTerm,
-  creditRate: termSettingsSchema.shape.creditRate,
-  setCurrent: z.boolean().default(true),
-});
 
 // GET /api/semesters — list all semesters (admin/registrar filtered)
 router.get("/", requireAuth, async (req: Request, res: Response) => {
@@ -73,73 +52,90 @@ router.get("/:id", requireAuth, async (req: Request, res: Response) => {
 
 // POST /api/semesters — create new semester (REGISTRAR only)
 router.post("/", requireAuth, async (req: Request, res: Response) => {
-  const parsed = createTermSchema.safeParse(req.body);
-  if (!parsed.success) {
-    return res.status(400).json({ message: "Provide valid term details, a maximum of 24-36 credits, and a rate of KES 300-500 per credit." });
-  }
-  const { programmeId, semesterNumber, academicYear, startDate, endDate, registrationOpen, registrationClose, assessmentStart, assessmentEnd, resultsDueDate, maxCreditsPerTerm, creditRate, setCurrent } = parsed.data;
-  if (!isEightWeekTerm(startDate, endDate)) {
-    return res.status(400).json({ message: "A continuous term must be exactly 8 weeks (56 calendar days, including the start and end dates)." });
-  }
-  if (registrationClose < registrationOpen || assessmentEnd < assessmentStart) {
-    return res.status(400).json({ message: "Registration and assessment end dates must be on or after their start dates." });
-  }
-  
-  // Verify user is registrar/admin
+  // Verify user is registrar/admin before looking up or creating records.
   const user = await prisma.user.findUnique({ where: { id: (req as any).user?.id || "" }, select: { role: true } });
   if (!user || !TERM_MANAGER_ROLES.includes(user.role)) {
     return res.status(403).json({ message: "Only a registrar or authorized administrator can create terms." });
   }
+
+  const inputSchema = z.object({ programmeId: z.string().optional() }).passthrough();
+  const parsed = inputSchema.safeParse(req.body);
+  if (!parsed.success) {
+    return res.status(400).json({ message: "Choose a programme to set its current term." });
+  }
+  const input = parsed.data as Record<string, unknown>;
+  const requestedProgrammeId = typeof input.programmeId === "string" ? input.programmeId : "";
+  const programme = requestedProgrammeId
+    ? await prisma.programme.findUnique({ where: { id: requestedProgrammeId } })
+    : await prisma.programme.findFirst({ orderBy: { name: "asc" } });
+  if (!programme) {
+    return res.status(400).json({ message: "Create a programme first, then set its current term." });
+  }
+  const termData = normalizeTermSetup(input);
   
   try {
-    // Check programme exists
-    const programme = await prisma.programme.findUnique({ where: { id: programmeId } });
-    if (!programme) return res.status(404).json({ message: "Programme not found" });
-    
-    // Check unique semester per programme+year
-    const existing = await prisma.semesterConfig.findUnique({
-      where: {
-        programmeId_semesterNumber_academicYear: {
-          programmeId,
-          semesterNumber,
-          academicYear
-        }
-      }
-    });
-    if (existing) return res.status(400).json({ message: "A term already exists for this programme and academic year." });
-    
-    const semester = await prisma.$transaction(async (tx) => {
-      if (setCurrent) {
-        await tx.semesterConfig.updateMany({
-          where: { programmeId, isActive: true },
-          data: { isActive: false },
-        });
-      }
-      return tx.semesterConfig.create({
-        data: {
-        programmeId,
-        semesterNumber,
-        academicYear,
-        startDate,
-        endDate,
-        registrationOpen,
-        registrationClose,
-        assessmentStart,
-        assessmentEnd,
-        resultsDueDate,
-        termWeeks: 8,
-        maxCreditsPerTerm,
-        creditRate,
-        adminFee: 1000,
-        isActive: setCurrent,
-        createdBy: (req as any).user?.id || ""
+    const result = await prisma.$transaction(async (tx) => {
+      const existing = await tx.semesterConfig.findUnique({
+        where: {
+          programmeId_semesterNumber_academicYear: {
+            programmeId: programme.id,
+            semesterNumber: termData.semesterNumber,
+            academicYear: termData.academicYear,
+          },
         },
-        include: { programme: true }
       });
+      const label = `${termData.academicYear} Term ${termData.semesterNumber}`;
+      const [invoiceCount, enrollmentCount] = existing
+        ? await Promise.all([
+            tx.invoice.count({ where: { termConfigId: existing.id } }),
+            tx.enrollment.count({ where: { semester: label, unit: { programmeId: programme.id } } }),
+          ])
+        : [0, 0];
+      const canReplaceExisting = invoiceCount === 0 && enrollmentCount === 0;
+
+      await tx.semesterConfig.updateMany({
+        where: { programmeId: programme.id, isActive: true },
+        data: { isActive: false },
+      });
+      if (existing && !canReplaceExisting) {
+        const current = await tx.semesterConfig.update({
+          where: { id: existing.id },
+          data: { isActive: true },
+          include: { programme: true },
+        });
+        return { term: current, reusedExisting: true };
+      }
+
+      const term = await tx.semesterConfig.upsert({
+        where: {
+          programmeId_semesterNumber_academicYear: {
+            programmeId: programme.id,
+            semesterNumber: termData.semesterNumber,
+            academicYear: termData.academicYear,
+          },
+        },
+        create: {
+          ...termData,
+          programmeId: programme.id,
+          isActive: true,
+          createdBy: (req as any).user?.id || "",
+        },
+        update: {
+          ...termData,
+          isActive: true,
+        },
+        include: { programme: true },
+      });
+      return { term, reusedExisting: false };
     });
     
-    res.status(201).json(semester);
+    res.status(result.reusedExisting ? 200 : 201).json({
+      ...result.term,
+      normalizedDatesAndSettings: true,
+      reusedExisting: result.reusedExisting,
+    });
   } catch (error) {
+    console.error("Could not create or activate term", error);
     res.status(500).json({ message: "Failed to create term. Check the selected programme and term details." });
   }
 });
@@ -248,8 +244,8 @@ router.post("/:id/activate", requireAuth, async (req: Request, res: Response) =>
 // DELETE /api/semesters/:id — delete semester (must have no enrollments)
 router.delete("/:id", requireAuth, async (req: Request, res: Response) => {
   const user = await prisma.user.findUnique({ where: { id: (req as any).user?.id || "" }, select: { role: true } });
-  if (user?.role !== "SUPER_ADMIN") {
-    return res.status(403).json({ error: "Only super admins can delete semesters" });
+  if (!user || !TERM_MANAGER_ROLES.includes(user.role)) {
+    return res.status(403).json({ error: "Only a registrar or authorized administrator can delete terms." });
   }
   
   try {
@@ -264,7 +260,7 @@ router.delete("/:id", requireAuth, async (req: Request, res: Response) => {
       prisma.enrollment.count({ where: { semester: label, unit: { programmeId: term.programmeId } } }),
     ]);
     if (invoiceCount || enrollmentCount) {
-      return res.status(409).json({ error: "A term with student registrations or invoices cannot be deleted." });
+      return res.status(409).json({ error: "This term already has student registrations or invoices and cannot be deleted. It can be deactivated instead." });
     }
     await prisma.semesterConfig.delete({ where: { id: req.params.id } });
     res.json({ success: true });

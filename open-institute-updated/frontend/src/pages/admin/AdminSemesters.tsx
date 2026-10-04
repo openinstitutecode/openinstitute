@@ -1,7 +1,7 @@
 import { FormEvent, useEffect, useState } from "react";
 import PortalShell from "../../components/portal/PortalShell";
 import { PortalSection, Badge } from "../../components/portal/Primitives";
-import { apiFetch, useCurrentUserName } from "../../lib/api";
+import { apiFetch, getRole, useCurrentUserName } from "../../lib/api";
 
 const links = [
   { to: "/admin/dashboard", label: "Dashboard" },
@@ -108,9 +108,11 @@ const blankForm = {
 
 export default function AdminSemesters() {
   const userName = useCurrentUserName();
+  const canManageTerms = ["REGISTRAR", "SUPER_ADMIN", "ICT_ADMIN", "PRINCIPAL"].includes(getRole() ?? "");
   const [semesters, setSemesters] = useState<Semester[] | null>(null);
   const [programmes, setProgrammes] = useState<ProgrammeOption[] | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
   const [form, setForm] = useState(blankForm);
   const [busy, setBusy] = useState(false);
 
@@ -136,9 +138,16 @@ export default function AdminSemesters() {
   async function createSemester(e: FormEvent) {
     e.preventDefault();
     setError(null);
+    setNotice(null);
     setBusy(true);
     try {
-      await apiFetch("/semesters", { method: "POST", body: JSON.stringify({ ...form, setCurrent: true }) });
+      const result = await apiFetch<{ programme: { name: string }; semesterNumber: number; academicYear: string; reusedExisting?: boolean }>(
+        "/semesters",
+        { method: "POST", body: JSON.stringify({ ...form, setCurrent: true }) },
+      );
+      setNotice(result.reusedExisting
+        ? `The existing ${result.programme.name} Term ${result.semesterNumber} (${result.academicYear}) has been set as current. Its settings were preserved because students already have records in it.`
+        : `Current term set for ${result.programme.name}: Term ${result.semesterNumber}, ${result.academicYear}. Missing or invalid dates and settings are corrected to safe 8-week defaults.`);
       setForm({ ...blankForm, programmeId: form.programmeId });
       load();
     } catch (err) {
@@ -175,35 +184,35 @@ export default function AdminSemesters() {
         Create and set the current continuous 8-week term for a programme. Setting a term current makes it available immediately for student course registration.
         Students must register for at least 8 credits and can be capped at 24-36 credits.
         Each term adds a KES 1,000 administration fee; industrial fees are configured separately in Fee Structure.
-        Registrar and authorized administrator access;
-        deleting requires Super Admin.
+        Registrar and authorized administrator access. Terms that already have student registrations or invoices can be deactivated but not deleted.
       </p>
 
       {error && <p className="mt-4 text-sm text-navy-dark">{error}</p>}
+      {notice && <p role="status" className="mt-4 border border-forest/20 bg-forest/5 p-3 text-sm text-forest">{notice}</p>}
 
       <div className="mt-8 grid gap-6 lg:grid-cols-2">
-        <PortalSection title="Create and set the current term">
+        {canManageTerms && <PortalSection title="Create and set the current term">
           <form onSubmit={createSemester} className="space-y-3">
             <label className="block">
               <span className="text-xs text-ink/60">Programme</span>
-              <select value={form.programmeId} onChange={(e) => setField("programmeId", e.target.value)} className="input mt-1" required disabled={!programmes?.length}>
+              <select value={form.programmeId} onChange={(e) => setField("programmeId", e.target.value)} className="input mt-1" disabled={!programmes?.length}>
                 <option value="">{programmes ? "Select a programme" : "Loading programmes…"}</option>
                 {programmes?.map((programme) => <option key={programme.id} value={programme.id}>{programme.name}</option>)}
               </select>
             </label>
             <div className="flex gap-3">
-              <input type="number" min="1" value={form.semesterNumber} onChange={(e) => setField("semesterNumber", e.target.value)} aria-label="Term number" className="input w-28" required />
-              <input value={form.academicYear} onChange={(e) => setField("academicYear", e.target.value)} placeholder="Academic year, e.g. 2026/2027" className="input" required />
+              <input type="number" value={form.semesterNumber} onChange={(e) => setField("semesterNumber", e.target.value)} aria-label="Term number" className="input w-28" />
+              <input value={form.academicYear} onChange={(e) => setField("academicYear", e.target.value)} placeholder="Academic year, e.g. 2026/2027" className="input" />
             </div>
             <p className="text-xs text-ink/55">Term dates must span exactly 56 calendar days (8 weeks, inclusive).</p>
             <div className="grid gap-3 sm:grid-cols-2">
               <label>
                 <span className="text-xs text-ink/60">Maximum credits (24-36)</span>
-                <input type="number" min="24" max="36" value={form.maxCreditsPerTerm} onChange={(e) => setField("maxCreditsPerTerm", e.target.value)} className="input mt-1" required />
+                <input type="number" value={form.maxCreditsPerTerm} onChange={(e) => setField("maxCreditsPerTerm", e.target.value)} className="input mt-1" />
               </label>
               <label>
                 <span className="text-xs text-ink/60">KES per credit (300-500)</span>
-                <input type="number" min="300" max="500" value={form.creditRate} onChange={(e) => setField("creditRate", e.target.value)} className="input mt-1" required />
+                <input type="number" value={form.creditRate} onChange={(e) => setField("creditRate", e.target.value)} className="input mt-1" />
               </label>
             </div>
             <p className="text-xs text-ink/55">KES 1,000 term administration fee is added automatically. Industrial fees are pulled from the programme's Fee Structure.</p>
@@ -220,14 +229,14 @@ export default function AdminSemesters() {
             ).map(([key, label]) => (
               <label key={key} className="block">
                 <span className="text-xs text-ink/60">{label}</span>
-                <input type="date" value={form[key]} onChange={(e) => setField(key, e.target.value)} className="input mt-1" required />
+                <input type="date" value={form[key]} onChange={(e) => setField(key, e.target.value)} className="input mt-1" />
               </label>
             ))}
             <button type="submit" disabled={busy} className="btn-primary disabled:opacity-50">
               {busy ? "Setting current term…" : "Create and set current term"}
             </button>
           </form>
-        </PortalSection>
+        </PortalSection>}
 
         <PortalSection title="All terms">
           {semesters && semesters.length === 0 && <p className="text-sm text-ink/50">None configured yet.</p>}
@@ -247,14 +256,14 @@ export default function AdminSemesters() {
                   <div className="flex shrink-0 flex-col items-end gap-2">
                     <Badge tone={s.isActive ? "ok" : "neutral"}>{s.isActive ? "Active" : "Inactive"}</Badge>
                     <div className="flex gap-3">
-                      {!s.isActive && (
+                      {canManageTerms && !s.isActive && (
                         <button onClick={() => activate(s.id)} className="text-xs font-medium text-forest hover:underline">
                           Activate
                         </button>
                       )}
-                      <button onClick={() => remove(s.id)} className="text-xs font-medium text-red-700 hover:underline">
-                        Delete
-                      </button>
+                      {canManageTerms && <button onClick={() => remove(s.id)} className="text-xs font-medium text-red-700 hover:underline">
+                        Delete term
+                      </button>}
                     </div>
                   </div>
                 </div>
