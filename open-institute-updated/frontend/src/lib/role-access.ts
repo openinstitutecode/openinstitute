@@ -161,16 +161,3 @@ export function canAccessPath(role: string | null, path: string): boolean {
   return true;
 }
 
-export function portalForLoginSelection(role: string): PortalKind | null {
-  if (role === "STUDENT") return "student";
-  if (role === "TRAINER") return "trainer";
-  if (role === "EMPLOYER") return "employer";
-  if (role === "ALUMNUS") return "alumni";
-  if (role === "APPLICANT") return "applicant";
-  if ((ALL_STAFF as readonly string[]).includes(role)) return "admin";
-  return null;
-}
-
-export function canUseLoginPortal(role: string, portal: string): boolean {
-  return portalForLoginSelection(role) === portal;
-}
