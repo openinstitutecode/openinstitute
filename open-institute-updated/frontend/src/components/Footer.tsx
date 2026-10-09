@@ -29,11 +29,9 @@ export default function Footer() {
         </div>
 
         <div>
-          <h3 className="eyebrow text-gold-light">Portals</h3>
+          <h3 className="eyebrow text-gold-light">Account</h3>
           <ul className="mt-4 space-y-2 text-sm">
-            <li><Link to="/login" className="hover:text-gold-light">Student login</Link></li>
-            <li><Link to="/login" className="hover:text-gold-light">Trainer login</Link></li>
-            <li><Link to="/login" className="hover:text-gold-light">Staff &amp; admin login</Link></li>
+            <li><Link to="/login" className="hover:text-gold-light">Sign in</Link></li>
           </ul>
         </div>
 

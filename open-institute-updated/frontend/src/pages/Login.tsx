@@ -2,19 +2,7 @@ import { FormEvent, useState } from "react";
 import { Logo } from "../components/Logo";
 import { portalHomeForRole } from "../lib/role-access";
 
-const roles = [
-  { id: "student", label: "Student" },
-  { id: "trainer", label: "Trainer" },
-  { id: "staff", label: "Staff / Admin" },
-  { id: "employer", label: "Employer" },
-  { id: "alumni", label: "Alumni" },
-  { id: "applicant", label: "Applicant" },
-] as const;
-
-type RoleId = (typeof roles)[number]["id"];
-
 export default function Login() {
-  const [role, setRole] = useState<RoleId>("student");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -28,7 +16,7 @@ export default function Login() {
       const res = await fetch("/api/auth/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password, portal: role }),
+        body: JSON.stringify({ email, password }),
       });
       if (!res.ok) {
         const body = await res.json().catch(() => null) as { message?: string } | null;
@@ -69,24 +57,6 @@ export default function Login() {
         <div className="mb-6 flex justify-center"><Logo className="h-24 w-auto" /></div>
         <p className="eyebrow">Sign in</p>
         <h1 className="mt-3 font-display text-3xl font-medium">Welcome back</h1>
-
-        <div className="mt-6 grid grid-cols-2 gap-1 border border-line p-1 sm:grid-cols-3">
-          {roles.map((r) => (
-            <button
-              key={r.id}
-              type="button"
-              onClick={() => setRole(r.id)}
-              className={`rounded-sm px-3 py-2 text-sm font-medium transition-colors ${
-                role === r.id ? "bg-navy text-paper" : "text-ink/60 hover:text-ink"
-              }`}
-            >
-              {r.label}
-            </button>
-          ))}
-        </div>
-        <p className="mt-2 text-xs text-ink/50">
-          Your account role determines your workspace after sign-in.
-        </p>
 
         <form onSubmit={handleSubmit} className="mt-8 space-y-5">
           <label className="block">

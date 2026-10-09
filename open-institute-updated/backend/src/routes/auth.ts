@@ -23,7 +23,6 @@ function sessionTtlSeconds(): number {
 const loginSchema = z.object({
   email: z.string().trim().min(1).max(254),
   password: z.string().min(1),
-  portal: z.enum(["student", "trainer", "staff", "employer", "alumni", "applicant"]).optional(),
 });
 
 authRouter.post("/login", async (req, res) => {
